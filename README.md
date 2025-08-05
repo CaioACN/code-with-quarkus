@@ -1,78 +1,97 @@
 # code-with-quarkus
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Este projeto utiliza o **Quarkus**, o framework Java Supersônico Subatômico.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## 💳 Sobre o Projeto
 
-## Running the application in dev mode
+Aplicação REST com banco de dados para gerenciar **pontuação de cartão de crédito**, calculada automaticamente com base no **histórico de compras dos usuários**.  
+Criado para fins de aprendizado e também para **demonstração profissional** das minhas habilidades com Java moderno, Quarkus, Hibernate, PostgreSQL e Angular.
 
-You can run your application in dev mode that enables live coding using:
+Desenvolvedor: [Caio Aurélio Cardoso Nunes](https://www.linkedin.com/in/caio-nunes-dev-java/)  
+📧 Email: agronomocardoso@gmail.com  
+📱 Telefone: (61) 994-23-5825
 
-```shell script
+---
+
+## ▶️ Executando a aplicação em modo de desenvolvimento
+
+Você pode rodar a aplicação em modo dev com hot reload usando:
+
+```bash
 ./mvnw quarkus:dev
-```
+💡 O Quarkus possui uma interface Dev UI, disponível apenas no modo de desenvolvimento:
+http://localhost:8080/q/dev/
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+📦 Empacotando e executando a aplicação
+Para empacotar a aplicação, execute:
 
-## Packaging and running the application
-
-The application can be packaged using:
-
-```shell script
+bash
+Copiar
+Editar
 ./mvnw package
-```
+Isso irá gerar o arquivo quarkus-run.jar na pasta target/quarkus-app/.
+Atenção: esse não é um über-jar (jar com todas as dependências embutidas).
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+Para rodar:
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+bash
+Copiar
+Editar
+java -jar target/quarkus-app/quarkus-run.jar
+Para gerar um über-jar:
 
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
+bash
+Copiar
+Editar
 ./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
+E execute com:
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+bash
+Copiar
+Editar
+java -jar target/*-runner.jar
+🧊 Criando um executável nativo
+Para gerar um binário nativo (usando GraalVM):
 
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
+bash
+Copiar
+Editar
 ./mvnw package -Dnative
-```
+Ou usando container (caso não tenha GraalVM instalado localmente):
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
+bash
+Copiar
+Editar
 ./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
+Depois, execute:
 
-You can then execute your native executable with: `./target/code-with-quarkus-1.0.0-SNAPSHOT-runner`
+bash
+Copiar
+Editar
+./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
+Mais sobre isso: https://quarkus.io/guides/maven-tooling
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+📚 Extensões utilizadas (Guides)
+REST (guia): Implementação Jakarta REST baseada no Vert.x e processamento em tempo de build.
 
-## Related Guides
+REST Jackson (guia): Suporte à serialização JSON com Jackson.
 
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- Hibernate ORM with Panache ([guide](https://quarkus.io/guides/hibernate-orm-panache)): Simplify your persistence code for Hibernate ORM via the active record or the repository pattern
-- JDBC Driver - PostgreSQL ([guide](https://quarkus.io/guides/datasource)): Connect to the PostgreSQL database via JDBC
+Hibernate ORM com Panache (guia): ORM simplificado com padrão Active Record ou Repository.
 
-## Provided Code
+PostgreSQL JDBC Driver (guia): Integração com banco de dados PostgreSQL.
 
-### Hibernate ORM
+✅ Código fornecido
+Hibernate ORM
+Exemplo de entidade JPA inicial:
 
-Create your first JPA entity
+Seção relacionada no guia
+Seção relacionada com Panache
 
-[Related guide section...](https://quarkus.io/guides/hibernate-orm)
+REST
+Início rápido de Web Services REST:
 
-[Related Hibernate with Panache section...](https://quarkus.io/guides/hibernate-orm-panache)
+Seção do guia relacionada
 
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+yaml
+Copiar
+Editar
