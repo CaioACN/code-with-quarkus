@@ -168,4 +168,4 @@ Rodar testes unitários	ng test
 Build para produção	ng build --prod
 
 🧠 Considerações Finais
-Este projeto é um exemplo completo de aplicação moderna Java + Angular, ideal para estudos, entrevistas técnicas, ou como base para aplicações reais.
+Este projeto é um exemplo completo de aplicação moderna Java + Angular, ideal para estudos, pode ser usado como base para aplicações reais.
