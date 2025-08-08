@@ -53,50 +53,35 @@ http://localhost:8080/q/dev/
 Front-end
 Dentro do diretório do projeto Angular:
 
-bash
-Copiar
-Editar
 npm install
 ng serve
 🔗 Acesse o Angular: http://localhost:4200
 
 📦 Empacotando a aplicação
 Gerar o JAR padrão:
-bash
-Copiar
-Editar
+
 ./mvnw package
 Arquivo gerado: target/quarkus-app/quarkus-run.jar
 
 Executar o JAR:
-bash
-Copiar
-Editar
+
 java -jar target/quarkus-app/quarkus-run.jar
 Gerar um über-jar (com dependências):
-bash
-Copiar
-Editar
+
 ./mvnw package -Dquarkus.package.jar.type=uber-jar
 java -jar target/*-runner.jar
 🧊 Criando um executável nativo
 Requer GraalVM instalado localmente ou uso de container:
 
-bash
-Copiar
-Editar
+
 ./mvnw package -Dnative
 Ou com container (sem GraalVM local):
 
-bash
-Copiar
-Editar
+
 ./mvnw package -Dnative -Dquarkus.native.container-build=true
 Executável gerado:
 
-bash
-Copiar
-Editar
+
 ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
 📘 Guia completo: Maven Tooling
 
@@ -118,8 +103,7 @@ Hibernate ORM
 Exemplo de entidade JPA:
 
 java
-Copiar
-Editar
+
 @Entity
 public class Usuario extends PanacheEntity {
     public String nome;
@@ -130,8 +114,7 @@ REST
 Exemplo de endpoint REST:
 
 java
-Copiar
-Editar
+
 @Path("/usuarios")
 public class UsuarioResource {
 
@@ -169,45 +152,33 @@ Build para produção	ng build --prod
 
 🐳 Executando o Back-end com Docker
 🔁 Gerar o JAR e criar a imagem Docker:
-bash
-Copiar
-Editar
+
 ./mvnw clean package -DskipTests -Dquarkus.package.type=fast-jar
 docker build -t code-with-quarkus .
 Cria a imagem Docker com base no JAR gerado na pasta target/quarkus-app.
 
 🚀 Subir o container Docker:
-bash
-Copiar
-Editar
+
 docker run -i --rm -p 8080:8080 code-with-quarkus
 A aplicação estará disponível em: http://localhost:8080
 
 💾 Versão da Imagem no Docker
 Salvar com uma tag específica (ex: v1.0.0):
-bash
-Copiar
-Editar
+
 docker build -t caio/code-with-quarkus:v1.0.0 .
 Enviar para o Docker Hub (se configurado):
-bash
-Copiar
-Editar
+
 docker login
 docker push caio/code-with-quarkus:v1.0.0
 🔧 Versão no Git
 Subir as alterações para o Git:
-bash
-Copiar
-Editar
+
 git add .
 git commit -m "feat: nova versão com endpoint X"
 git push origin main
 Recomendado: crie tags no Git para versionamento:
 
-bash
-Copiar
-Editar
+
 git tag -a v1.0.0 -m "Primeira versão estável"
 git push origin v1.0.0
 
