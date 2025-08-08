@@ -1,4 +1,4 @@
-# code-with-quarkus
+# valida-pontos-cartao
 
 Este projeto utiliza o **Quarkus**, o framework Java Supersônico Subatômico.
 
@@ -166,6 +166,50 @@ Instalar dependências	npm install
 Rodar em modo dev	ng serve
 Rodar testes unitários	ng test
 Build para produção	ng build --prod
+
+🐳 Executando o Back-end com Docker
+🔁 Gerar o JAR e criar a imagem Docker:
+bash
+Copiar
+Editar
+./mvnw clean package -DskipTests -Dquarkus.package.type=fast-jar
+docker build -t code-with-quarkus .
+Cria a imagem Docker com base no JAR gerado na pasta target/quarkus-app.
+
+🚀 Subir o container Docker:
+bash
+Copiar
+Editar
+docker run -i --rm -p 8080:8080 code-with-quarkus
+A aplicação estará disponível em: http://localhost:8080
+
+💾 Versão da Imagem no Docker
+Salvar com uma tag específica (ex: v1.0.0):
+bash
+Copiar
+Editar
+docker build -t caio/code-with-quarkus:v1.0.0 .
+Enviar para o Docker Hub (se configurado):
+bash
+Copiar
+Editar
+docker login
+docker push caio/code-with-quarkus:v1.0.0
+🔧 Versão no Git
+Subir as alterações para o Git:
+bash
+Copiar
+Editar
+git add .
+git commit -m "feat: nova versão com endpoint X"
+git push origin main
+Recomendado: crie tags no Git para versionamento:
+
+bash
+Copiar
+Editar
+git tag -a v1.0.0 -m "Primeira versão estável"
+git push origin v1.0.0
 
 🧠 Considerações Finais
 Este projeto é um exemplo completo de aplicação moderna Java + Angular, ideal para estudos, pode ser usado como base para aplicações reais.
