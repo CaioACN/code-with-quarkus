@@ -1,186 +1,71 @@
-# valida-pontos-cartao
+# QUARKUS | valida-pontos-cartao
+<img src="https://img.shields.io/badge/Dev-Caio_Aurelio-informational?style=flat-square&logoColor=white&color=cdcdcd" />
+
+<img src="https://img.shields.io/badge/Docker-information?style=flat-square&logo=docker&logoColor=2496ED&color=cdcdcd" /> <img src="https://img.shields.io/badge/Quarkus-information?style=flat-square&logo=quarkus&logoColor=4695EB&color=cdcdcd" />
 
 Este projeto utiliza o **Quarkus**, o framework Java Supersônico Subatômico.
 
-## 💳 Sobre o Projeto
+> Caio Aurélio Cardoso Nunes [LinkedIn][link-linkedin] 
+> e-mail: agronomocardoso@gmail.com 
+> Telefone: +55 (61) 994-23-5825 
 
+
+## Sobre o Projeto
+ 
 Aplicação web full stack para gerenciar **pontuação de cartão de crédito**, calculada automaticamente com base no **histórico de compras dos usuários**.
-
+ 
 Desenvolvida como estudo prático e também como **projeto demonstrativo profissional**, destacando o uso de tecnologias modernas como:
-- Java com Quarkus (back-end reativo, leve e rápido)
-- Hibernate com Panache (persistência simplificada)
-- PostgreSQL (banco de dados relacional)
-- Angular (front-end SPA moderno)
 
-**Desenvolvedor:** [Caio Aurélio Cardoso Nunes](https://www.linkedin.com/in/caio-nunes-dev-java/)  
-📧 Email: agronomocardoso@gmail.com  
-📱 Telefone: (61) 994-23-5825
+* Java com Quarkus (back-end reativo, leve e rápido)
+* Hibernate com Panache (persistência simplificada)
+* PostgreSQL (banco de dados relacional)
+* Angular (front-end SPA moderno)
 
----
+ 
+##  Arquitetura da Aplicação
+ 
+### Back-end (Java Quarkus)
 
-## 🧱 Arquitetura da Aplicação
-
-### 🔹 Back-end (Java Quarkus)
 A aplicação segue a arquitetura em camadas:
-
+ 
 - **Controller / Resource**: Camada de exposição (REST), responde às requisições HTTP e aciona os serviços.
   - Ex: `@Path("/usuarios")`, `@GET`, `@POST`
 - **Service**: Contém a lógica de negócio, validações e regras específicas.
 - **Repository**: Camada de persistência (usando Panache), realiza acesso direto ao banco via JPA.
 - **DTOs**: Objetos de transferência de dados para desacoplar API das entidades.
 - **Entities**: Representações JPA das tabelas do banco de dados.
+ 
+### Front-end (Angular)
 
-### 🔸 Front-end (Angular)
 - Estrutura modular com:
   - **Components**: Interfaces visuais e interação com o usuário
   - **Services**: Comunicação com a API REST (via `HttpClient`)
   - **Models**: Interfaces TypeScript compatíveis com os DTOs do back-end
   - **Rotas protegidas e reativas**, com feedback visual ao usuário
-
----
-
-## ▶️ Como executar em modo de desenvolvimento
-
-### Back-end
-
-Comando para rodar o projeto com hot reload:
+ 
+ 
+## Como executar este projecto
+ 
+1.  Clonar
+ 
+```bash
+git clone https://github.com/CaioACN/valida-pontos-cartao.git
+```
+ 
+2.  Subir o Docker compose
 
 ```bash
-./mvnw quarkus:dev
-🔗 Acesse o Dev UI do Quarkus (somente em modo dev):
-http://localhost:8080/q/dev/
+docker compose up --build -d
+```
 
-Front-end
-Dentro do diretório do projeto Angular:
+3. Acesse o Angular: `http://localhost:4200`
+ 
 
-npm install
-ng serve
-🔗 Acesse o Angular: http://localhost:4200
-
-📦 Empacotando a aplicação
-Gerar o JAR padrão:
-
-./mvnw package
-Arquivo gerado: target/quarkus-app/quarkus-run.jar
-
-Executar o JAR:
-
-java -jar target/quarkus-app/quarkus-run.jar
-Gerar um über-jar (com dependências):
-
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-java -jar target/*-runner.jar
-🧊 Criando um executável nativo
-Requer GraalVM instalado localmente ou uso de container:
-
-
-./mvnw package -Dnative
-Ou com container (sem GraalVM local):
-
-
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-Executável gerado:
-
-
-./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
-📘 Guia completo: Maven Tooling
-
-📚 Extensões Utilizadas
-Quarkus REST
-Guia: REST Reactive
-
-Jackson (JSON)
-Guia: REST Jackson
-
-Hibernate ORM com Panache
-Guia: Panache
-
-PostgreSQL JDBC
-Guia: PostgreSQL
-
-✅ Código Inicial Gerado (Quarkus)
-Hibernate ORM
-Exemplo de entidade JPA:
-
-java
-
-@Entity
-public class Usuario extends PanacheEntity {
-    public String nome;
-    public String email;
-    public Integer pontuacao;
-}
-REST
-Exemplo de endpoint REST:
-
-java
-
-@Path("/usuarios")
-public class UsuarioResource {
-
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<Usuario> listarTodos() {
-        return Usuario.listAll();
-    }
-}
-🎯 Boas Práticas Adotadas
-Separação clara entre entidades (JPA) e DTOs (API)
-
-Utilização de Response e Status nos endpoints
-
-Validações com javax.validation
-
-Documentação REST com OpenAPI (Swagger)
-
-Angular desacoplado, consumindo apenas endpoints REST
-
-Nomenclatura consistente para entidades, controllers e serviços
-
-Banco relacional modelado com integridade referencial
-
-Deploy local, em container ou como binário nativo
-
-🚀 Comandos úteis (Angular)
-Dentro do projeto Angular:
-
-Ação	Comando
-Instalar dependências	npm install
-Rodar em modo dev	ng serve
-Rodar testes unitários	ng test
-Build para produção	ng build --prod
-
-🐳 Executando o Back-end com Docker
-🔁 Gerar o JAR e criar a imagem Docker:
-
-./mvnw clean package -DskipTests -Dquarkus.package.type=fast-jar
-docker build -t code-with-quarkus .
-Cria a imagem Docker com base no JAR gerado na pasta target/quarkus-app.
-
-🚀 Subir o container Docker:
-
-docker run -i --rm -p 8080:8080 code-with-quarkus
-A aplicação estará disponível em: http://localhost:8080
-
-💾 Versão da Imagem no Docker
-Salvar com uma tag específica (ex: v1.0.0):
-
-docker build -t caio/code-with-quarkus:v1.0.0 .
-Enviar para o Docker Hub (se configurado):
-
-docker login
-docker push caio/code-with-quarkus:v1.0.0
-🔧 Versão no Git
-Subir as alterações para o Git:
-
-git add .
-git commit -m "feat: nova versão com endpoint X"
-git push origin main
-Recomendado: crie tags no Git para versionamento:
-
-
-git tag -a v1.0.0 -m "Primeira versão estável"
-git push origin v1.0.0
-
+ 
 🧠 Considerações Finais
 Este projeto é um exemplo completo de aplicação moderna Java + Angular, ideal para estudos, pode ser usado como base para aplicações reais.
+ 
+
+<!-- links --->
+[link-linkedin]:https://www.linkedin.com/in/caio-nunes-dev-java/
+ 
