@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+
 
 @ApplicationScoped
 public class AdminService {
@@ -47,10 +47,10 @@ public class AdminService {
         // - Alertas de sistema
 
         DashboardDTO dashboard = new DashboardDTO();
-        dashboard.totalUsuarios = usuarioRepository.countUsuariosAtivos();
-        dashboard.totalPontosCirculacao = saldoPontosRepository.calcularTotalPontosCirculacao();
-        dashboard.transacoesHoje = transacaoRepository.countTransacoesPorData(LocalDate.now());
-        dashboard.resgatesPendentes = 0L; // TODO: Implementar
+        dashboard.totalUsuarios = (int) usuarioRepository.countUsuariosAtivos();
+        dashboard.saldoTotal = Long.valueOf(saldoPontosRepository.countSaldosPositivos());
+        dashboard.totalTransacoes = (int) transacaoRepository.countPendentesProcessamento();
+        dashboard.resgatesPendentes = 0; // TODO: Implementar
 
         return dashboard;
     }
@@ -64,15 +64,16 @@ public class AdminService {
         // - Taxa de conversão de resgates
 
         EstatisticasDTO estatisticas = new EstatisticasDTO();
-        estatisticas.periodo = periodo;
-        estatisticas.dataInicio = dataInicio;
-        estatisticas.dataFim = dataFim;
+        estatisticas.periodoIni = dataInicio != null ? dataInicio.atStartOfDay() : null;
+        estatisticas.periodoFim = dataFim != null ? dataFim.atTime(23, 59, 59) : null;
 
         // Calcular estatísticas básicas
         if (dataInicio != null && dataFim != null) {
-            estatisticas.totalTransacoes = transacaoRepository.countTransacoesPorPeriodo(dataInicio, dataFim);
-            estatisticas.pontosAcumulados = movimentoPontosRepository.calcularPontosAcumulados(dataInicio, dataFim);
-            estatisticas.pontosResgatados = movimentoPontosRepository.calcularPontosResgatados(dataInicio, dataFim);
+            LocalDateTime inicio = dataInicio.atStartOfDay();
+            LocalDateTime fim = dataFim.atTime(23, 59, 59);
+            estatisticas.totalTransacoes = (int) transacaoRepository.countTransacoesPorUsuario(null, inicio, fim);
+            estatisticas.pontosAcumulados = 0L; // TODO: Implementar quando método estiver disponível
+            estatisticas.pontosResgatados = 0L; // TODO: Implementar quando método estiver disponível
         }
 
         return estatisticas;
@@ -102,9 +103,9 @@ public class AdminService {
         MovimentoPontos movimento = new MovimentoPontos();
         movimento.usuario = usuario;
         movimento.cartao = saldo.cartao;
-        movimento.tipo = "AJUSTE";
+        movimento.tipo = MovimentoPontos.TipoMovimento.AJUSTE;
         movimento.pontos = ajuste.pontos;
-        movimento.observacao = ajuste.motivo;
+        movimento.observacao = ajuste.observacao;
         movimento.criadoEm = LocalDateTime.now();
         movimento.jobId = ajuste.jobId;
 
@@ -120,7 +121,7 @@ public class AdminService {
                 .orElseThrow(() -> new NotFoundException("Movimento não encontrado: " + movimentoId));
 
         // Validar se movimento pode ser estornado
-        if (!"ACUMULO".equals(movimento.tipo)) {
+        if (!MovimentoPontos.TipoMovimento.ACUMULO.equals(movimento.tipo)) {
             throw new IllegalArgumentException("Apenas movimentos de acúmulo podem ser estornados");
         }
 
@@ -139,7 +140,7 @@ public class AdminService {
         MovimentoPontos estorno = new MovimentoPontos();
         estorno.usuario = movimento.usuario;
         estorno.cartao = movimento.cartao;
-        estorno.tipo = "ESTORNO";
+        estorno.tipo = MovimentoPontos.TipoMovimento.ESTORNO;
         estorno.pontos = -movimento.pontos;
         estorno.refTransacaoId = movimento.refTransacaoId;
         estorno.observacao = "Estorno: " + motivo;
@@ -196,20 +197,21 @@ public class AdminService {
         // - Status dos serviços externos
 
         SaudeSistemaDTO saude = new SaudeSistemaDTO();
-        saude.status = "SAUDAVEL";
+        saude.statusGeral = SaudeSistemaDTO.Status.UP;
         saude.timestamp = LocalDateTime.now();
 
         // Verificações básicas
         try {
             // Testar conexão com banco
             Long totalUsuarios = usuarioRepository.count();
-            saude.metricas.put("total_usuarios", totalUsuarios);
-            saude.metricas.put("conexao_banco", "OK");
+            saude.addComponente("database", SaudeSistemaDTO.Status.UP, 0L, "OK", "jdbc:postgresql://localhost");
+            saude.addComponente("usuarios", SaudeSistemaDTO.Status.UP, 0L, "Total: " + totalUsuarios, null);
         } catch (Exception e) {
-            saude.status = "CRITICO";
-            saude.metricas.put("conexao_banco", "ERRO");
-            saude.alertas.add("Falha na conexão com banco de dados: " + e.getMessage());
+            saude.addComponente("database", SaudeSistemaDTO.Status.DOWN, 0L, "ERRO: " + e.getMessage(), "jdbc:postgresql://localhost");
+            saude.statusGeral = SaudeSistemaDTO.Status.DOWN;
         }
+        
+        saude.recompute();
 
         return saude;
     }
@@ -243,8 +245,8 @@ public class AdminService {
             throw new IllegalArgumentException("Quantidade de pontos é obrigatória");
         }
 
-        if (ajuste.motivo == null || ajuste.motivo.trim().isEmpty()) {
-            throw new IllegalArgumentException("Motivo do ajuste é obrigatório");
+        if (ajuste.observacao == null || ajuste.observacao.trim().isEmpty()) {
+            throw new IllegalArgumentException("Observação do ajuste é obrigatória");
         }
 
         if (ajuste.jobId == null || ajuste.jobId.trim().isEmpty()) {

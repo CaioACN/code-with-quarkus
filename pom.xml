@@ -51,7 +51,7 @@
       <artifactId>quarkus-hibernate-orm-panache</artifactId>
     </dependency>
 
-    <!-- Bean Validation (necessário para jakarta.validation.* nas entidades) -->
+    <!-- Bean Validation -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-hibernate-validator</artifactId>
@@ -73,6 +73,12 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-health</artifactId>
+    </dependency>
+
+    <!-- OpenAPI + Swagger UI -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-openapi</artifactId>
     </dependency>
 
     <!-- Testes -->
@@ -149,7 +155,6 @@
           </execution>
         </executions>
         <configuration>
-          <!-- passa a respeitar -DskipITs -->
           <skipITs>${skipITs}</skipITs>
           <systemPropertyVariables>
             <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>

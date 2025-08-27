@@ -1,252 +1,383 @@
 package org.acme.loyalty.service;
 
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import org.acme.loyalty.dto.ConfiguracaoNotificacaoDTO;
 import org.acme.loyalty.dto.NotificacaoRequestDTO;
 import org.acme.loyalty.dto.NotificacaoResponseDTO;
-import org.acme.loyalty.dto.NotificacaoUpdateDTO;
-import org.acme.loyalty.dto.PageRequestDTO;
-import org.acme.loyalty.dto.ConfiguracaoNotificacaoDTO;
 import org.acme.loyalty.entity.Notificacao;
 import org.acme.loyalty.entity.Usuario;
 import org.acme.loyalty.repository.NotificacaoRepository;
 import org.acme.loyalty.repository.UsuarioRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class NotificacaoService {
 
-    @Inject
-    NotificacaoRepository notificacaoRepository;
+    @Inject NotificacaoRepository notificacaoRepository;
+    @Inject UsuarioRepository usuarioRepository;
 
-    @Inject
-    UsuarioRepository usuarioRepository;
-
-    public List<NotificacaoResponseDTO> listarNotificacoes(Long usuarioId, String tipo, 
-                                                         Boolean lida, Integer pagina, Integer tamanho) {
-        
-        // Validar se usuário existe
-        Usuario usuario = usuarioRepository.findByIdOptional(usuarioId)
+    // -------------------- Listagem com filtros/paginação --------------------
+    public List<NotificacaoResponseDTO> listarNotificacoes(Long usuarioId,
+                                                           String tipo,
+                                                           Boolean lida, // ignorado: entidade não tem esse campo
+                                                           Integer pagina,
+                                                           Integer tamanho) {
+        usuarioRepository.findByIdOptional(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + usuarioId));
 
-        // Construir filtros
-        PageRequestDTO paginacao = new PageRequestDTO(pagina, tamanho);
-        
-        List<Notificacao> notificacoes = notificacaoRepository.findByUsuarioId(
-            usuarioId, tipo, lida, paginacao.getOffset(), paginacao.getLimit()
+        int pageIndex = (pagina == null ? 0 : Math.max(0, pagina - 1)); // 1-based -> 0-based
+        int pageSize  = (tamanho == null || tamanho <= 0) ? 20 : tamanho;
+
+        Notificacao.Tipo tipoEnum = parseTipo(tipo);
+
+        PanacheQuery<Notificacao> pq = notificacaoRepository.queryByFiltros(
+                usuarioId,
+                null,      // canal
+                null,      // status
+                tipoEnum,  // tipo
+                null,      // de
+                null,      // até
+                pageIndex, pageSize
         );
 
-        return notificacoes.stream()
-                .map(this::toNotificacaoResponseDTO)
-                .collect(Collectors.toList());
+        return pq.list().stream().map(this::toNotificacaoResponseDTO).collect(Collectors.toList());
     }
 
+    // -------------------- Marcações de leitura --------------------
     @Transactional
     public void marcarComoLida(Long notificacaoId, Long usuarioId) {
-        Notificacao notificacao = notificacaoRepository.findByIdOptional(notificacaoId)
+        Notificacao n = notificacaoRepository.findByIdOptional(notificacaoId)
                 .orElseThrow(() -> new NotFoundException("Notificação não encontrada: " + notificacaoId));
 
-        // Validar se notificação pertence ao usuário
-        if (!notificacao.usuario.id.equals(usuarioId)) {
+        if (n.usuario == null || !Objects.equals(n.usuario.id, usuarioId)) {
             throw new IllegalArgumentException("Notificação não pertence ao usuário");
         }
 
-        // Marcar como lida
-        notificacao.lida = true;
-        notificacao.lidaEm = LocalDateTime.now();
-        notificacao.atualizadoEm = LocalDateTime.now();
-
-        notificacaoRepository.persist(notificacao);
+        String stamp = "\"readAt\":\"" + LocalDateTime.now() + "\"";
+        n.metadataJson = mergeJsonMarker(n.metadataJson, stamp);
     }
 
     @Transactional
     public void marcarTodasComoLidas(Long usuarioId) {
-        // Buscar todas as notificações não lidas do usuário
-        List<Notificacao> notificacoes = notificacaoRepository.findNaoLidasByUsuarioId(usuarioId);
-
-        // Marcar todas como lidas
-        LocalDateTime agora = LocalDateTime.now();
-        notificacoes.forEach(notificacao -> {
-            notificacao.lida = true;
-            notificacao.lidaEm = agora;
-            notificacao.atualizadoEm = agora;
-        });
-
-        // Persistir alterações
-        notificacaoRepository.persist(notificacoes);
+        List<Notificacao> lista = notificacaoRepository.listByUsuarioId(usuarioId);
+        String stamp = "\"readAt\":\"" + LocalDateTime.now() + "\"";
+        for (Notificacao n : lista) {
+            n.metadataJson = mergeJsonMarker(n.metadataJson, stamp);
+        }
     }
 
+    // -------------------- Exclusão / limpeza --------------------
     @Transactional
     public void deletarNotificacao(Long notificacaoId, Long usuarioId) {
-        Notificacao notificacao = notificacaoRepository.findByIdOptional(notificacaoId)
+        Notificacao n = notificacaoRepository.findByIdOptional(notificacaoId)
                 .orElseThrow(() -> new NotFoundException("Notificação não encontrada: " + notificacaoId));
-
-        // Validar se notificação pertence ao usuário
-        if (!notificacao.usuario.id.equals(usuarioId)) {
+        if (n.usuario == null || !Objects.equals(n.usuario.id, usuarioId)) {
             throw new IllegalArgumentException("Notificação não pertence ao usuário");
         }
-
         notificacaoRepository.deleteById(notificacaoId);
     }
 
     @Transactional
     public void limparNotificacoesAntigas(Long usuarioId, Integer dias) {
-        // Calcular data limite
-        LocalDateTime dataLimite = LocalDateTime.now().minusDays(dias);
-
-        // Buscar notificações antigas
-        List<Notificacao> notificacoesAntigas = notificacaoRepository.findAntigasByUsuarioId(usuarioId, dataLimite);
-
-        // Deletar notificações antigas
-        notificacaoRepository.deleteByIds(notificacoesAntigas.stream()
-                .map(n -> n.id)
-                .collect(Collectors.toList()));
+        int d = (dias == null || dias <= 0) ? 30 : dias;
+        LocalDateTime limite = LocalDateTime.now().minusDays(d);
+        notificacaoRepository.delete("usuario.id = ?1 and criadoEm < ?2", usuarioId, limite);
     }
 
+    // -------------------- “Não lidas” (aproximação) --------------------
     public Long contarNotificacoesNaoLidas(Long usuarioId) {
-        return notificacaoRepository.countNaoLidasByUsuarioId(usuarioId);
+        // Aproximação: conta ENVIADAS (não parseia metadataJson)
+        return notificacaoRepository.count("usuario.id = ?1 and status = ?2",
+                usuarioId, Notificacao.Status.ENVIADA);
     }
 
+    // -------------------- Envio --------------------
     @Transactional
     public void enviarNotificacao(NotificacaoRequestDTO request) {
-        // Validar dados da notificação
         validarNotificacao(request);
 
-        // Buscar usuário
-        Usuario usuario = usuarioRepository.findByIdOptional(request.usuarioId)
-                .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + request.usuarioId));
-
-        // Verificar se usuário aceita este tipo de notificação
-        if (!usuarioAceitaNotificacao(usuario, request.tipo)) {
-            return; // Usuário não aceita este tipo de notificação
+        Usuario usuario = null;
+        if (request.usuarioId != null) {
+            usuario = usuarioRepository.findByIdOptional(request.usuarioId)
+                    .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + request.usuarioId));
         }
 
-        // Criar notificação
-        Notificacao notificacao = new Notificacao();
-        notificacao.usuario = usuario;
-        notificacao.tipo = request.tipo;
-        notificacao.titulo = request.titulo;
-        notificacao.mensagem = request.mensagem;
-        notificacao.dados = request.dados;
-        notificacao.prioridade = request.prioridade;
-        notificacao.lida = false;
-        notificacao.criadoEm = LocalDateTime.now();
-        notificacao.atualizadoEm = LocalDateTime.now();
+        var rendered = request.renderContent();
 
-        // Persistir notificação
-        notificacaoRepository.persist(notificacao);
+        // EMAIL
+        if (Boolean.TRUE.equals(request.viaEmail)) {
+            String email = (request.email != null && !request.email.isBlank())
+                    ? request.email
+                    : (usuario != null ? usuario.email : null);
+            if (email == null || email.isBlank()) {
+                throw new IllegalArgumentException("E-mail não informado para viaEmail=true");
+            }
+            Notificacao n = baseFromRequest(request, usuario,
+                    Notificacao.Canal.EMAIL, email, rendered.assunto, rendered.mensagem);
+            notificacaoRepository.persist(n);
+        }
 
-        // TODO: Enviar notificação pelos canais configurados
-        // - E-mail
-        // - Push notification
-        // - SMS
-        // - In-app notification
+        // SMS
+        if (Boolean.TRUE.equals(request.viaSms)) {
+            if (request.telefoneE164 == null || request.telefoneE164.isBlank()) {
+                throw new IllegalArgumentException("Telefone E.164 é obrigatório para viaSms=true");
+            }
+            Notificacao n = baseFromRequest(request, usuario,
+                    Notificacao.Canal.SMS, request.telefoneE164, rendered.assunto, rendered.mensagem);
+            notificacaoRepository.persist(n);
+        }
 
-        // TODO: Publicar evento NotificacaoEnviada
-        // eventPublisherService.publishEvent(new NotificacaoEnviadaEvent(notificacao.id, ...));
+        // PUSH
+        if (Boolean.TRUE.equals(request.viaPush)) {
+            if (request.deviceToken == null || request.deviceToken.isBlank()) {
+                throw new IllegalArgumentException("Device token é obrigatório para viaPush=true");
+            }
+            Notificacao n = baseFromRequest(request, usuario,
+                    Notificacao.Canal.PUSH, request.deviceToken, rendered.assunto, rendered.mensagem);
+            notificacaoRepository.persist(n);
+        }
+
+        // TODO: enfileirar processamento e publicar evento quando efetivamente enviado
     }
 
     @Transactional
     public void enviarNotificacaoEmLote(List<NotificacaoRequestDTO> notificacoes) {
-        // Validar lista de notificações
         if (notificacoes == null || notificacoes.isEmpty()) {
             throw new IllegalArgumentException("Lista de notificações não pode ser vazia");
         }
-
-        // Processar cada notificação
-        for (NotificacaoRequestDTO request : notificacoes) {
+        for (NotificacaoRequestDTO r : notificacoes) {
             try {
-                enviarNotificacao(request);
-            } catch (Exception e) {
-                // TODO: Registrar erro e continuar com as próximas
-                // logger.error("Erro ao enviar notificação: " + e.getMessage(), e);
+                enviarNotificacao(r);
+            } catch (Exception ignored) {
+                // TODO: logar e continuar
             }
         }
     }
 
+    // -------------------- Configurações (placeholder) --------------------
     public ConfiguracaoNotificacaoDTO consultarConfiguracaoUsuario(Long usuarioId) {
-        Usuario usuario = usuarioRepository.findByIdOptional(usuarioId)
+        usuarioRepository.findByIdOptional(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + usuarioId));
 
-        // TODO: Implementar consulta de configurações de notificação
-        // - Tipos aceitos
-        // - Canais preferidos
-        // - Horários permitidos
-        // - Frequência máxima
-
-        ConfiguracaoNotificacaoDTO config = new ConfiguracaoNotificacaoDTO();
-        config.usuarioId = usuarioId;
-        config.emailAtivo = true;
-        config.pushAtivo = true;
-        config.smsAtivo = false;
-        config.inAppAtivo = true;
-
-        return config;
+        ConfiguracaoNotificacaoDTO cfg = new ConfiguracaoNotificacaoDTO();
+        cfg.usuarioId = usuarioId;
+        cfg.emailAtivo = true;
+        cfg.pushAtivo  = true;
+        cfg.smsAtivo   = false;
+        // removido: cfg.inAppAtivo (campo não existe no DTO)
+        return cfg;
     }
 
     @Transactional
     public void atualizarConfiguracaoUsuario(Long usuarioId, ConfiguracaoNotificacaoDTO config) {
-        Usuario usuario = usuarioRepository.findByIdOptional(usuarioId)
+        usuarioRepository.findByIdOptional(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + usuarioId));
-
-        // TODO: Implementar atualização de configurações
-        // - Validar configurações
-        // - Persistir alterações
-        // - Aplicar mudanças em tempo real
+        // TODO: persistir preferências em entidade própria
     }
 
-    private void validarNotificacao(NotificacaoRequestDTO request) {
-        if (request.usuarioId == null) {
-            throw new IllegalArgumentException("ID do usuário é obrigatório");
+    // -------------------- Helpers --------------------
+    private void validarNotificacao(NotificacaoRequestDTO r) {
+        if (r == null) throw new IllegalArgumentException("Dados da notificação são obrigatórios");
+
+        if (!Boolean.TRUE.equals(r.viaEmail) && !Boolean.TRUE.equals(r.viaSms) && !Boolean.TRUE.equals(r.viaPush)) {
+            throw new IllegalArgumentException("Selecione pelo menos um canal (viaEmail/viaSms/viaPush)");
         }
 
-        if (request.tipo == null || request.tipo.trim().isEmpty()) {
-            throw new IllegalArgumentException("Tipo da notificação é obrigatório");
+        boolean semUsuario = (r.usuarioId == null);
+        if (semUsuario) {
+            boolean okEmail = Boolean.TRUE.equals(r.viaEmail) && r.email != null && !r.email.isBlank();
+            boolean okSms   = Boolean.TRUE.equals(r.viaSms)   && r.telefoneE164 != null && !r.telefoneE164.isBlank();
+            boolean okPush  = Boolean.TRUE.equals(r.viaPush)  && r.deviceToken != null && !r.deviceToken.isBlank();
+            if (!(okEmail || okSms || okPush)) {
+                throw new IllegalArgumentException("Informe contato compatível com os canais selecionados ou um usuarioId");
+            }
         }
 
-        if (request.titulo == null || request.titulo.trim().isEmpty()) {
-            throw new IllegalArgumentException("Título da notificação é obrigatório");
+        if ((r.templateId == null || r.templateId.isBlank())
+                && (r.mensagem == null || r.mensagem.isBlank())) {
+            throw new IllegalArgumentException("Informe templateId ou mensagem");
         }
 
-        if (request.mensagem == null || request.mensagem.trim().isEmpty()) {
-            throw new IllegalArgumentException("Mensagem da notificação é obrigatória");
-        }
+        r.ensureDefaults();
+    }
 
-        if (request.prioridade == null) {
-            request.prioridade = "NORMAL"; // Prioridade padrão
+    private Notificacao baseFromRequest(NotificacaoRequestDTO req,
+                                        Usuario usuario,
+                                        Notificacao.Canal canal,
+                                        String destino,
+                                        String assuntoRender,
+                                        String mensagemRender) {
+
+        Notificacao n = new Notificacao();
+        n.usuario = usuario;
+        n.canal = canal;
+        n.tipo = mapEventoToTipo(req.evento);
+        n.status = (req.enviarApos != null ? Notificacao.Status.AGENDADA : Notificacao.Status.ENFILEIRADA);
+        n.titulo = assuntoRender;
+        n.mensagem = mensagemRender;
+        n.destino = destino;
+        n.criadoEm = LocalDateTime.now();
+        n.agendadoPara = req.enviarApos;
+        n.correlationId = req.correlationId;
+        n.template = req.templateId;
+        n.metadataJson = buildMetadataJson(req);
+        return n;
+    }
+
+    private Notificacao.Tipo mapEventoToTipo(NotificacaoRequestDTO.Evento ev) {
+        if (ev == null) return Notificacao.Tipo.SISTEMA;
+        return switch (ev) {
+            case ACUMULO -> Notificacao.Tipo.ACUMULO;
+            case EXPIRACAO -> Notificacao.Tipo.EXPIRACAO;
+            case RESGATE -> Notificacao.Tipo.RESGATE;
+            case AJUSTE -> Notificacao.Tipo.AJUSTE;
+            case SISTEMA -> Notificacao.Tipo.SISTEMA;
+        };
+    }
+
+    private Notificacao.Tipo parseTipo(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return Notificacao.Tipo.valueOf(s.trim().toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            return null;
         }
     }
 
-    private boolean usuarioAceitaNotificacao(Usuario usuario, String tipo) {
-        // TODO: Implementar verificação de preferências do usuário
-        // - Consultar configurações
-        // - Verificar se tipo está habilitado
-        // - Verificar se não está em blacklist
-        // - Verificar horários permitidos
-
-        // Por enquanto, aceita todas as notificações
-        return true;
+    private static String mergeJsonMarker(String current, String markerKV) {
+        if (current == null || current.isBlank()) {
+            return "{ " + markerKV + " }";
+        }
+        String trimmed = current.trim();
+        if (trimmed.endsWith("}")) {
+            String base = trimmed.substring(0, trimmed.length() - 1).trim();
+            if (base.endsWith("{")) {
+                return "{ " + markerKV + " }";
+            }
+            return base + ", " + markerKV + " }";
+        }
+        return current + " | " + markerKV;
     }
 
-    private NotificacaoResponseDTO toNotificacaoResponseDTO(Notificacao notificacao) {
-        return new NotificacaoResponseDTO(
-            notificacao.id,
-            notificacao.usuario.id,
-            notificacao.tipo,
-            notificacao.titulo,
-            notificacao.mensagem,
-            notificacao.dados,
-            notificacao.prioridade,
-            notificacao.lida,
-            notificacao.criadoEm,
-            notificacao.lidaEm,
-            notificacao.atualizadoEm
-        );
+    private static String buildMetadataJson(NotificacaoRequestDTO r) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        putIfNotNull(map, "variaveis", r.variaveis);
+        putIfNotNull(map, "idioma", r.idioma);
+        putIfNotNull(map, "ttlSegundos", r.ttlSegundos);
+        putIfNotNull(map, "prioridade", (r.prioridade != null ? r.prioridade.name() : null));
+        putIfNotNull(map, "dedupKey", r.dedupKey);
+        putIfNotNull(map, "origem", r.origem);
+        putIfNotNull(map, "metadata", r.metadata);
+        putIfNotNull(map, "usuarioId", r.usuarioId);
+        putIfNotNull(map, "cartaoId", r.cartaoId);
+        putIfNotNull(map, "transacaoId", r.transacaoId);
+        putIfNotNull(map, "resgateId", r.resgateId);
+
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append("\"").append(escape(String.valueOf(e.getKey()))).append("\":");
+            sb.append(toJsonValue(e.getValue()));
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private static void putIfNotNull(Map<String, Object> map, String key, Object val) {
+        if (val != null) map.put(key, val);
+    }
+
+    private static String toJsonValue(Object v) {
+        if (v == null) return "null";
+        if (v instanceof Number || v instanceof Boolean) return String.valueOf(v);
+        if (v instanceof Map<?, ?> m) {
+            StringBuilder sb = new StringBuilder("{");
+            boolean first = true;
+            for (var e : m.entrySet()) {
+                if (!first) sb.append(", ");
+                first = false;
+                sb.append("\"").append(escape(String.valueOf(e.getKey()))).append("\":");
+                sb.append(toJsonValue(e.getValue()));
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+        if (v instanceof Collection<?> c) {
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            for (var e : c) {
+                if (!first) sb.append(", ");
+                first = false;
+                sb.append(toJsonValue(e));
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        return "\"" + escape(String.valueOf(v)) + "\"";
+    }
+
+    private static String escape(String s) {
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
+    }
+
+    private NotificacaoResponseDTO toNotificacaoResponseDTO(Notificacao n) {
+        NotificacaoResponseDTO dto = new NotificacaoResponseDTO();
+        dto.id = n.id;
+        dto.correlationId = n.correlationId;
+        dto.usuarioId = (n.usuario != null ? n.usuario.id : null);
+        dto.createdAt = n.criadoEm;
+        dto.scheduledFor = n.agendadoPara;
+
+        switch (n.status) {
+            case AGENDADA   -> dto.status = NotificacaoResponseDTO.Status.SCHEDULED;
+            case ENFILEIRADA, RETENTANDO -> dto.status = NotificacaoResponseDTO.Status.QUEUED;
+            case ENVIADA    -> {
+                dto.status = NotificacaoResponseDTO.Status.SENT;
+                dto.sentAt = (n.enviadoEm != null ? n.enviadoEm : dto.sentAt);
+            }
+            case FALHA      -> {
+                dto.status = NotificacaoResponseDTO.Status.FAILED;
+                dto.failedAt = (n.ultimaTentativaEm != null ? n.ultimaTentativaEm : LocalDateTime.now());
+            }
+            case CANCELADA  -> dto.status = NotificacaoResponseDTO.Status.CANCELLED;
+        }
+
+        NotificacaoResponseDTO.CanalResultado canal = new NotificacaoResponseDTO.CanalResultado();
+        canal.canal = switch (n.canal) {
+            case EMAIL -> NotificacaoResponseDTO.CanalResultado.Canal.EMAIL;
+            case SMS   -> NotificacaoResponseDTO.CanalResultado.Canal.SMS;
+            case PUSH, WEBHOOK -> NotificacaoResponseDTO.CanalResultado.Canal.PUSH;
+        };
+        canal.status = switch (n.status) {
+            case AGENDADA   -> NotificacaoResponseDTO.CanalResultado.CanalStatus.SCHEDULED;
+            case ENFILEIRADA, RETENTANDO -> NotificacaoResponseDTO.CanalResultado.CanalStatus.QUEUED;
+            case ENVIADA    -> NotificacaoResponseDTO.CanalResultado.CanalStatus.SENT;
+            case FALHA      -> NotificacaoResponseDTO.CanalResultado.CanalStatus.FAILED;
+            case CANCELADA  -> NotificacaoResponseDTO.CanalResultado.CanalStatus.CANCELLED;
+        };
+        canal.provider = n.provider;
+        canal.providerMessageId = n.providerMessageId;
+        canal.attempts = n.tentativas;
+        canal.errorMessage = n.erroMensagem;
+        canal.errorCode = null;
+        canal.lastUpdateAt = (n.ultimaTentativaEm != null ? n.ultimaTentativaEm :
+                              n.enviadoEm != null ? n.enviadoEm : n.criadoEm);
+
+        dto.canais = List.of(canal);
+        dto.recomputeTotals();
+        return dto;
     }
 }
-

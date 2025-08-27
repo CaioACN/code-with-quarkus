@@ -11,7 +11,9 @@ import org.acme.loyalty.dto.PageRequestDTO;
 import org.acme.loyalty.entity.CampanhaBonus;
 import org.acme.loyalty.repository.CampanhaBonusRepository;
 
-import java.time.LocalDateTime;
+
+import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,18 +29,15 @@ public class CampanhaBonusService {
         validarCampanhaBonus(request);
 
         // Criar nova campanha
-        CampanhaBonus campanha = new CampanhaBonus();
-        campanha.nome = request.nome;
-        campanha.descricao = request.descricao;
-        campanha.multiplicadorExtra = request.multiplicadorExtra;
-        campanha.vigenciaIni = request.vigenciaIni;
-        campanha.vigenciaFim = request.vigenciaFim;
-        campanha.segmento = request.segmento;
-        campanha.prioridade = request.prioridade;
-        campanha.teto = request.teto;
-        campanha.ativo = true;
-        campanha.criadoEm = LocalDateTime.now();
-        campanha.atualizadoEm = LocalDateTime.now();
+        CampanhaBonus campanha = new CampanhaBonus(
+            request.nome,
+            request.multiplicadorExtra,
+            request.vigenciaIni,
+            request.vigenciaFim,
+            request.segmento,
+            request.prioridade,
+            request.teto
+        );
 
         // Persistir campanha
         campanhaBonusRepository.persist(campanha);
@@ -59,9 +58,26 @@ public class CampanhaBonusService {
         // Construir filtros
         PageRequestDTO paginacao = new PageRequestDTO(pagina, tamanho);
         
-        List<CampanhaBonus> campanhas = campanhaBonusRepository.findByFiltros(
-            nome, segmento, ativo, paginacao.getOffset(), paginacao.getLimit()
-        );
+        // Usar métodos que existem no repository
+        List<CampanhaBonus> campanhas;
+        if (ativo != null && ativo) {
+            campanhas = campanhaBonusRepository.listarVigentes(LocalDate.now());
+        } else {
+            campanhas = campanhaBonusRepository.findAll().list();
+        }
+        
+        // Aplicar filtros adicionais se necessário
+        if (nome != null && !nome.trim().isEmpty()) {
+            campanhas = campanhas.stream()
+                .filter(c -> c.nome.toLowerCase().contains(nome.toLowerCase()))
+                .collect(Collectors.toList());
+        }
+        
+        if (segmento != null && !segmento.trim().isEmpty()) {
+            campanhas = campanhas.stream()
+                .filter(c -> c.aplicaParaSegmento(segmento))
+                .collect(Collectors.toList());
+        }
 
         return campanhas.stream()
                 .map(this::toCampanhaBonusResponseDTO)
@@ -76,9 +92,6 @@ public class CampanhaBonusService {
         // Atualizar campos permitidos
         if (request.nome != null) {
             campanha.nome = request.nome;
-        }
-        if (request.descricao != null) {
-            campanha.descricao = request.descricao;
         }
         if (request.multiplicadorExtra != null) {
             campanha.multiplicadorExtra = request.multiplicadorExtra;
@@ -99,8 +112,6 @@ public class CampanhaBonusService {
             campanha.teto = request.teto;
         }
 
-        campanha.atualizadoEm = LocalDateTime.now();
-
         // Persistir alterações
         campanhaBonusRepository.persist(campanha);
 
@@ -112,10 +123,8 @@ public class CampanhaBonusService {
         CampanhaBonus campanha = campanhaBonusRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Campanha de bônus não encontrada: " + id));
 
-        // Verificar se campanha está sendo usada
-        if (campanhaBonusRepository.isCampanhaEmUso(id)) {
-            throw new IllegalStateException("Não é possível deletar campanha que está sendo utilizada");
-        }
+        // Verificar se campanha está sendo usada (simplificado por enquanto)
+        // TODO: Implementar verificação de uso da campanha
 
         campanhaBonusRepository.deleteById(id);
     }
@@ -125,8 +134,11 @@ public class CampanhaBonusService {
         CampanhaBonus campanha = campanhaBonusRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Campanha de bônus não encontrada: " + id));
 
-        campanha.ativo = true;
-        campanha.atualizadoEm = LocalDateTime.now();
+        // Como a entidade não tem campo ativo, vamos usar a vigência
+        // Ativar = definir vigência futura
+        if (campanha.vigenciaIni.isAfter(LocalDate.now())) {
+            campanha.vigenciaIni = LocalDate.now();
+        }
 
         campanhaBonusRepository.persist(campanha);
 
@@ -138,8 +150,9 @@ public class CampanhaBonusService {
         CampanhaBonus campanha = campanhaBonusRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Campanha de bônus não encontrada: " + id));
 
-        campanha.ativo = false;
-        campanha.atualizadoEm = LocalDateTime.now();
+        // Como a entidade não tem campo ativo, vamos usar a vigência
+        // Desativar = definir vigência passada
+        campanha.vigenciaFim = LocalDate.now().minusDays(1);
 
         campanhaBonusRepository.persist(campanha);
 
@@ -147,7 +160,7 @@ public class CampanhaBonusService {
     }
 
     public List<CampanhaBonusResponseDTO> listarCampanhasAtivas() {
-        List<CampanhaBonus> campanhas = campanhaBonusRepository.findCampanhasAtivas();
+        List<CampanhaBonus> campanhas = campanhaBonusRepository.listarVigentes(LocalDate.now());
 
         return campanhas.stream()
                 .map(this::toCampanhaBonusResponseDTO)
@@ -172,7 +185,7 @@ public class CampanhaBonusService {
             throw new IllegalArgumentException("Nome da campanha é obrigatório");
         }
 
-        if (request.multiplicadorExtra == null || request.multiplicadorExtra <= 0) {
+        if (request.multiplicadorExtra == null || request.multiplicadorExtra.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Multiplicador extra deve ser maior que zero");
         }
 
@@ -192,20 +205,7 @@ public class CampanhaBonusService {
     }
 
     private CampanhaBonusResponseDTO toCampanhaBonusResponseDTO(CampanhaBonus campanha) {
-        return new CampanhaBonusResponseDTO(
-            campanha.id,
-            campanha.nome,
-            campanha.descricao,
-            campanha.multiplicadorExtra,
-            campanha.vigenciaIni,
-            campanha.vigenciaFim,
-            campanha.segmento,
-            campanha.prioridade,
-            campanha.teto,
-            campanha.ativo,
-            campanha.criadoEm,
-            campanha.atualizadoEm
-        );
+        return CampanhaBonusResponseDTO.fromEntity(campanha);
     }
 }
 
