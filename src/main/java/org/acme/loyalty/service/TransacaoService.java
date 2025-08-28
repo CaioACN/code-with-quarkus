@@ -6,17 +6,18 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import org.acme.loyalty.dto.TransacaoRequestDTO;
 import org.acme.loyalty.dto.TransacaoResponseDTO;
+import org.acme.loyalty.dto.event.TransactionCreatedEvent;
+import org.acme.loyalty.entity.Cartao;
 import org.acme.loyalty.entity.Transacao;
 import org.acme.loyalty.entity.Usuario;
-import org.acme.loyalty.entity.Cartao;
+import org.acme.loyalty.repository.CartaoRepository;
 import org.acme.loyalty.repository.TransacaoRepository;
 import org.acme.loyalty.repository.UsuarioRepository;
-import org.acme.loyalty.repository.CartaoRepository;
-import org.acme.loyalty.dto.event.TransactionCreatedEvent;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -34,169 +35,144 @@ public class TransacaoService {
     @Inject
     EventPublisherService eventPublisherService;
 
+    // ===================== Criação =====================
+
     @Transactional
     public Transacao criarTransacao(TransacaoRequestDTO request) {
-        // Validar se usuário existe
+        // Usuário
         Usuario usuario = usuarioRepository.findByIdOptional(request.usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + request.usuarioId));
 
-        // Validar se cartão existe e pertence ao usuário
+        // Cartão
         Cartao cartao = cartaoRepository.findByIdOptional(request.cartaoId)
                 .orElseThrow(() -> new NotFoundException("Cartão não encontrado: " + request.cartaoId));
 
         if (!cartao.usuario.id.equals(request.usuarioId)) {
             throw new IllegalArgumentException("Cartão não pertence ao usuário informado");
         }
-
-        // Validar se cartão está ativo
         if (cartao.estaVencido()) {
             throw new IllegalArgumentException("Cartão está vencido");
         }
 
-        // Criar transação
-        Transacao transacao = new Transacao();
-        transacao.cartao = cartao;
-        transacao.usuario = usuario;
-        transacao.valor = request.valor;
-        transacao.moeda = request.moeda;
-        transacao.mcc = request.mcc;
-        transacao.categoria = request.categoria;
-        transacao.parceiroId = request.parceiroId;
-        transacao.status = "PENDENTE";
-        transacao.dataEvento = request.dataEvento != null ? request.dataEvento : LocalDateTime.now();
-        transacao.processadoEm = LocalDateTime.now();
+        // Transação
+        Transacao tx = new Transacao();
+        tx.cartao = cartao;
+        tx.usuario = usuario;
+        tx.valor = request.valor;
+        tx.moeda = request.moeda;
+        tx.mcc = request.mcc;
+        tx.categoria = request.categoria;
+        tx.parceiroId = request.parceiroId;
+        tx.status = Transacao.StatusTransacao.PENDENTE; // enum!
+        tx.dataEvento = (request.dataEvento != null ? request.dataEvento : LocalDateTime.now());
+        tx.processadoEm = null; // pendente ainda não processou
 
-        // Persistir transação
-        transacaoRepository.persist(transacao);
+        transacaoRepository.persist(tx);
 
-        // Publicar evento TransactionCreated
+        // Evento de domínio
         TransactionCreatedEvent event = new TransactionCreatedEvent(
-            transacao.id, transacao.usuario.id, transacao.cartao.id,
-            transacao.valor, transacao.moeda, transacao.mcc, transacao.categoria,
-            transacao.dataEvento
+                tx.id, tx.usuario.id, tx.cartao.id,
+                tx.valor, tx.moeda, tx.mcc, tx.categoria, tx.dataEvento
         );
         eventPublisherService.publishEvent(event);
 
-        return transacao;
+        return tx;
     }
 
-    public List<TransacaoResponseDTO> listarTransacoes(
-            Long usuarioId, Long cartaoId, String status,
-            String dataInicio, String dataFim, Integer pagina, Integer tamanho) {
-        
-        // Construir query baseada nos filtros
-        StringBuilder query = new StringBuilder();
-        List<Object> params = new java.util.ArrayList<>();
+    // ===================== Consulta =====================
 
-        if (usuarioId != null) {
-            query.append("usuario.id = ?").append(params.size() + 1);
-            params.add(usuarioId);
-        }
+    public List<TransacaoResponseDTO> listarTransacoes(Long usuarioId,
+                                                       Long cartaoId,
+                                                       String status,
+                                                       String dataInicio,
+                                                       String dataFim,
+                                                       Integer pagina,
+                                                       Integer tamanho) {
 
-        if (cartaoId != null) {
-            if (query.length() > 0) query.append(" AND ");
-            query.append("cartao.id = ?").append(params.size() + 1);
-            params.add(cartaoId);
-        }
+        int pageIndex = (pagina == null || pagina < 1) ? 0 : (pagina - 1);
+        int pageSize  = (tamanho == null || tamanho < 1) ? 20 : tamanho;
 
-        if (status != null) {
-            if (query.length() > 0) query.append(" AND ");
-            query.append("status = ?").append(params.size() + 1);
-            params.add(status);
-        }
+        Transacao.StatusTransacao statusEnum = parseStatus(status);
+        LocalDateTime ini = parseDateTimeNullable(dataInicio);
+        LocalDateTime fim = parseDateTimeNullable(dataFim);
 
-        if (dataInicio != null) {
-            if (query.length() > 0) query.append(" AND ");
-            query.append("dataEvento >= ?").append(params.size() + 1);
-            params.add(parseDateTime(dataInicio));
-        }
+        List<Transacao> lista = transacaoRepository
+                .queryAvancada(usuarioId, cartaoId, null, null, statusEnum, ini, fim, pageIndex, pageSize)
+                .list();
 
-        if (dataFim != null) {
-            if (query.length() > 0) query.append(" AND ");
-            query.append("dataEvento <= ?").append(params.size() + 1);
-            params.add(parseDateTime(dataFim));
-        }
-
-        // Executar query com paginação
-        List<Transacao> transacoes;
-        if (query.length() > 0) {
-            transacoes = transacaoRepository.find(query.toString(), params.toArray())
-                    .page(pagina - 1, tamanho)
-                    .list();
-        } else {
-            transacoes = transacaoRepository.findAll()
-                    .page(pagina - 1, tamanho)
-                    .list();
-        }
-
-        // Converter para DTOs
-        return transacoes.stream()
-                .map(this::toTransacaoResponseDTO)
-                .collect(Collectors.toList());
+        return lista.stream().map(this::toTransacaoResponseDTO).collect(Collectors.toList());
     }
 
     public TransacaoResponseDTO buscarTransacaoPorId(Long id) {
-        Transacao transacao = transacaoRepository.findByIdOptional(id)
+        return transacaoRepository.findByIdOptional(id)
+                .map(this::toTransacaoResponseDTO)
                 .orElse(null);
-
-        return transacao != null ? toTransacaoResponseDTO(transacao) : null;
     }
+
+    // ===================== Atualização de status =====================
 
     @Transactional
     public TransacaoResponseDTO atualizarStatus(Long id, String novoStatus) {
-        Transacao transacao = transacaoRepository.findByIdOptional(id)
+        Transacao tx = transacaoRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
 
-        // Validar transição de status
-        if (!isValidStatusTransition(transacao.status, novoStatus)) {
-            throw new IllegalArgumentException("Transição de status inválida: " + transacao.status + " -> " + novoStatus);
+        Transacao.StatusTransacao novo = parseStatusOrThrow(novoStatus);
+
+        if (!isValidStatusTransition(tx.status, novo)) {
+            throw new IllegalArgumentException("Transição de status inválida: " + tx.status + " -> " + novo);
         }
 
-        // Atualizar status
-        transacao.status = novoStatus;
-        transacao.processadoEm = LocalDateTime.now();
+        tx.status = novo;
+        tx.processadoEm = LocalDateTime.now(); // marca o instante da mudança
 
-        // Persistir alterações
-        transacaoRepository.persist(transacao);
-
-        return toTransacaoResponseDTO(transacao);
+        transacaoRepository.persist(tx);
+        return toTransacaoResponseDTO(tx);
     }
+
+    // ===================== Exclusão =====================
 
     @Transactional
     public void deletarTransacao(Long id) {
-        Transacao transacao = transacaoRepository.findByIdOptional(id)
+        Transacao tx = transacaoRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
 
-        // Validar se pode ser deletada
-        if (!"PENDENTE".equals(transacao.status)) {
+        if (tx.status != Transacao.StatusTransacao.PENDENTE) {
             throw new IllegalArgumentException("Apenas transações pendentes podem ser deletadas");
         }
 
         transacaoRepository.deleteById(id);
     }
 
-    public Integer consultarPontosTransacao(Long id) {
-        Transacao transacao = transacaoRepository.findByIdOptional(id)
-                .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
+    // ===================== Pontos =====================
 
-        return transacao.pontosGerados;
+    public Integer consultarPontosTransacao(Long id) {
+        Transacao tx = transacaoRepository.findByIdOptional(id)
+                .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
+        return tx.pontosGerados;
     }
 
-    private TransacaoResponseDTO toTransacaoResponseDTO(Transacao transacao) {
+    // ===================== Helpers =====================
+
+    private TransacaoResponseDTO toTransacaoResponseDTO(Transacao tx) {
         return new TransacaoResponseDTO(
-            transacao.id,
-            transacao.cartao.id,
-            transacao.usuario.id,
-            transacao.valor,
-            transacao.moeda,
-            transacao.mcc,
-            transacao.categoria,
-            transacao.parceiroId,
-            transacao.status,
-            transacao.dataEvento,
-            transacao.processadoEm,
-            transacao.pontosGerados
+                tx.id,
+                tx.cartao.id,
+                tx.usuario.id,
+                tx.valor,
+                tx.moeda,
+                tx.mcc,
+                tx.categoria,
+                tx.parceiroId,
+                (tx.status != null ? tx.status.name() : null),
+                tx.dataEvento,
+                tx.processadoEm,
+                tx.pontosGerados
         );
+    }
+
+    private LocalDateTime parseDateTimeNullable(String value) {
+        if (value == null || value.isBlank()) return null;
+        return parseDateTime(value);
     }
 
     private LocalDateTime parseDateTime(String dateTimeStr) {
@@ -204,6 +180,7 @@ public class TransacaoService {
             if (dateTimeStr.contains("T")) {
                 return LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             } else {
+                // Se vier apenas a data, considerar início do dia
                 return LocalDateTime.parse(dateTimeStr + "T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             }
         } catch (Exception e) {
@@ -211,14 +188,43 @@ public class TransacaoService {
         }
     }
 
-    private boolean isValidStatusTransition(String currentStatus, String newStatus) {
-        // Implementar lógica de validação de transição de status
-        if ("PENDENTE".equals(currentStatus)) {
-            return "PROCESSANDO".equals(newStatus) || "CANCELADA".equals(newStatus);
-        } else if ("PROCESSANDO".equals(currentStatus)) {
-            return "CONCLUIDA".equals(newStatus) || "ERRO".equals(newStatus);
+    private Transacao.StatusTransacao parseStatus(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return Transacao.StatusTransacao.valueOf(s.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return null; // status inválido → ignora filtro
         }
-        return false;
+    }
+
+    private Transacao.StatusTransacao parseStatusOrThrow(String s) {
+        try {
+            return Transacao.StatusTransacao.valueOf(s.trim().toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Status inválido: " + s);
+        }
+    }
+
+    /**
+     * Regras de transição (compatíveis com o enum da entidade):
+     * PENDENTE   -> PROCESSADA, REJEITADA
+     * PROCESSADA -> ESTORNADA
+     * REJEITADA  -> (terminal)
+     * ESTORNADA  -> (terminal)
+     */
+    private boolean isValidStatusTransition(Transacao.StatusTransacao atual,
+                                            Transacao.StatusTransacao novo) {
+        if (atual == null || novo == null) return false;
+        switch (atual) {
+            case PENDENTE:
+                return (novo == Transacao.StatusTransacao.PROCESSADA
+                        || novo == Transacao.StatusTransacao.REJEITADA);
+            case PROCESSADA:
+                return (novo == Transacao.StatusTransacao.ESTORNADA);
+            case REJEITADA:
+            case ESTORNADA:
+            default:
+                return false;
+        }
     }
 }
-

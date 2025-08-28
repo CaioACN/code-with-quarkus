@@ -28,6 +28,10 @@ public class ExportacaoRelatorioDTO {
 
     // ---- Parâmetros da requisição ----
 
+    /** Alias de compatibilidade com o service (RelatorioService.exportarRelatorio). */
+    @Schema(description = "Tipo de relatório (alias usado pelo service)")
+    public String tipoRelatorio;
+
     @NotBlank
     @Schema(
         description = "Tipo de relatório a exportar",
@@ -89,11 +93,33 @@ public class ExportacaoRelatorioDTO {
     @Schema(description = "Tamanho do conteúdo em bytes", example = "123456")
     public Long contentLength;
 
+    /** URL gerada/armazenada para download do arquivo (compatível com o service). */
+    @Schema(description = "URL para download do arquivo gerado", example = "/relatorios/pontos-acumulados_1693140930000.csv")
+    public String arquivoUrl;
+
+    /** Status do processamento da exportação (ex.: PROCESSANDO, CONCLUIDO, ERRO). */
+    @Schema(description = "Status do processamento da exportação", example = "CONCLUIDO")
+    public String status;
+
+    /** Timestamp de solicitação da exportação. */
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @Schema(description = "Data/hora da solicitação")
+    public LocalDateTime solicitadoEm;
+
+    /** Mensagem de erro quando status = ERRO. */
+    @Schema(description = "Mensagem de erro (quando aplicável)")
+    public String erro;
+
     /** Conteúdo do arquivo em Base64 (útil quando a API retorna inline). Alternativa a stream/binário. */
     @Schema(description = "Conteúdo do arquivo, em Base64 (opcional quando a API retorna bytes/stream).")
     public String conteudoBase64;
 
-    public ExportacaoRelatorioDTO() {}
+    public ExportacaoRelatorioDTO() {
+        this.formato = "csv";                       // default seguro para toLowerCase()
+        this.status = "PROCESSANDO";                // estado inicial padrão
+        this.filtros = new java.util.HashMap<>();   // evita NPE ao adicionar chaves
+        this.solicitadoEm = java.time.LocalDateTime.now();
+    }
 
     // ======================== Helpers de construção ========================
 
@@ -106,6 +132,7 @@ public class ExportacaoRelatorioDTO {
     public static ExportacaoRelatorioDTO fromQuery(String tipo, String dataInicioStr, String dataFimStr, String formato) {
         ExportacaoRelatorioDTO dto = new ExportacaoRelatorioDTO();
         dto.tipo = tipo;
+        dto.tipoRelatorio = tipo; // mantém ambos consistentes
         dto.formato = formato;
         dto.dataInicio = parseInicio(dataInicioStr);
         dto.dataFim = parseFim(dataFimStr);
@@ -197,7 +224,8 @@ public class ExportacaoRelatorioDTO {
     /** Define contentType e fileName coerentes com o formato atual (sem sobrescrever se já existirem). */
     public void ensureMetadata() {
         if (this.contentType == null) this.contentType = mediaTypeFor(this.formato);
-        if (this.fileName == null) this.fileName = defaultFileName(this.tipo, this.formato);
+        if (this.fileName == null) this.fileName = defaultFileName(
+                (this.tipo != null ? this.tipo : this.tipoRelatorio), this.formato);
     }
 
     /** Normaliza separador e cabeçalho para CSV. */
