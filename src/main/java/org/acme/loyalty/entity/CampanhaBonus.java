@@ -85,9 +85,32 @@ public class CampanhaBonus extends PanacheEntity {
         return segmento.equalsIgnoreCase(segmentoUsuario);
     }
 
-    /** Multiplicador total = 1 + extra. */
+    /**
+     * Multiplicador total conforme regra 17.5:
+     * pontos_totais = floor(pontos_base * (1 + multiplicador_extra))
+     */
     public BigDecimal getMultiplicadorTotal() {
         return BigDecimal.ONE.add(multiplicadorExtra);
+    }
+    
+    /**
+     * Verifica se o multiplicador extra é válido conforme regra 17.5: multiplicador_extra ≥ 0
+     */
+    public boolean temMultiplicadorExtraValido() {
+        return multiplicadorExtra != null && multiplicadorExtra.compareTo(BigDecimal.ZERO) >= 0;
+    }
+    
+    /**
+     * Calcula pontos totais com bônus conforme regra 17.5:
+     * pontos_totais = floor(pontos_base * (1 + multiplicador_extra))
+     */
+    public Long calcularPontosComBonus(Long pontosBase) {
+        if (pontosBase == null || pontosBase <= 0) {
+            return 0L;
+        }
+        BigDecimal pontosBaseDecimal = BigDecimal.valueOf(pontosBase);
+        BigDecimal pontosTotais = pontosBaseDecimal.multiply(getMultiplicadorTotal());
+        return pontosTotais.longValue(); // floor automático
     }
 
     public boolean temTeto() {

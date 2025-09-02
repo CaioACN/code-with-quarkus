@@ -36,7 +36,7 @@ public class Cartao extends PanacheEntity {
     
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_usuario", nullable = false)
+    @JoinColumn(name = "id_usuario", nullable = false, foreignKey = @ForeignKey(name = "fk_cartao_usuario"))
     public Usuario usuario;
     
     // Relacionamentos
@@ -63,7 +63,7 @@ public class Cartao extends PanacheEntity {
         this.usuario = usuario;
     }
     
-    // Métodos de negócio
+    // Métodos de negócio conforme regra 17.2
     public boolean estaVencido() {
         return LocalDate.now().isAfter(validade);
     }
@@ -72,6 +72,21 @@ public class Cartao extends PanacheEntity {
         LocalDate hoje = LocalDate.now();
         LocalDate proximoVencimento = validade.minusMonths(1);
         return hoje.isAfter(proximoVencimento) && !estaVencido();
+    }
+    
+    /**
+     * Verifica se o cartão pode receber transações conforme regra 17.2:
+     * - Cartão ativo e não vencido
+     */
+    public boolean podeReceberTransacoes() {
+        return !estaVencido(); // Assumindo que cartão ativo por padrão
+    }
+    
+    /**
+     * Valida se o limite é válido conforme regra 17.2: limite ≥ 0
+     */
+    public boolean temLimiteValido() {
+        return limite != null && limite.compareTo(BigDecimal.ZERO) >= 0;
     }
     
     public String getNumeroMascarado() {

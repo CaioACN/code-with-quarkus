@@ -100,7 +100,10 @@ public class CampanhaBonusResource {
         try {
             // TODO: Implementar serviço de ativação
             
-            return Response.ok(SuccessResponseDTO.ok("Campanha ativada com sucesso", null)).build();
+            // TODO: Implementar método ativarCampanhaBonus no CampanhaBonusService
+            // CampanhaBonusDTO campanha = campanhaBonusService.ativarCampanhaBonus(id);
+            CampanhaBonusDTO campanha = new CampanhaBonusDTO();
+            return Response.ok(SuccessResponseDTO.ok("Campanha ativada com sucesso", campanha)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorResponseDTO.badRequest("Erro ao ativar campanha: " + e.getMessage()))
@@ -114,7 +117,10 @@ public class CampanhaBonusResource {
         try {
             // TODO: Implementar serviço de desativação
             
-            return Response.ok(SuccessResponseDTO.ok("Campanha desativada com sucesso", null)).build();
+            // TODO: Implementar método desativarCampanhaBonus no CampanhaBonusService
+            // CampanhaBonusDTO campanha = campanhaBonusService.desativarCampanhaBonus(id);
+            CampanhaBonusDTO campanha = new CampanhaBonusDTO();
+            return Response.ok(SuccessResponseDTO.ok("Campanha desativada com sucesso", campanha)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorResponseDTO.badRequest("Erro ao desativar campanha: " + e.getMessage()))
@@ -128,7 +134,10 @@ public class CampanhaBonusResource {
         try {
             // TODO: Implementar serviço de consulta de status
             
-            return Response.ok(SuccessResponseDTO.ok("Status da campanha consultado com sucesso", null)).build();
+            // TODO: Implementar método consultarStatusCampanhaBonus no CampanhaBonusService
+            // CampanhaBonusDTO campanha = campanhaBonusService.consultarStatusCampanhaBonus(id);
+            CampanhaBonusDTO campanha = new CampanhaBonusDTO();
+            return Response.ok(SuccessResponseDTO.ok("Status da campanha consultado com sucesso", campanha)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ErrorResponseDTO.internalError("Erro ao consultar status: " + e.getMessage()))
@@ -151,4 +160,7 @@ public class CampanhaBonusResource {
         }
     }
 }
+
+
+
 

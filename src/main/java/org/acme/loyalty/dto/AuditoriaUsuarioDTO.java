@@ -5,6 +5,7 @@ import org.acme.loyalty.entity.*;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -13,18 +14,18 @@ import java.util.List;
 public class AuditoriaUsuarioDTO {
 
     // Identificação
-    @Schema(description = "ID do usuário", example = "10")
+    @Schema(description = "ID do usuário", example = "10", required = true)
     public Long usuarioId;
 
-    @Schema(description = "Nome do usuário", example = "Maria Silva")
+    @Schema(description = "Nome do usuário", example = "Maria Silva", required = true)
     public String nome;
 
-    @Schema(description = "E-mail do usuário", example = "maria.silva@exemplo.com")
+    @Schema(description = "E-mail do usuário (único)", example = "maria.silva@exemplo.com", required = true)
     public String email;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    @Schema(description = "Data/hora de cadastro do usuário", example = "2025-08-15T12:34:56")
-    public LocalDateTime dataCadastro;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @Schema(description = "Data de cadastro do usuário", example = "2025-08-15")
+    public java.time.LocalDate dataCadastro;
 
     // Totais de relacionamento
     @Schema(description = "Quantidade de cartões")
@@ -79,6 +80,15 @@ public class AuditoriaUsuarioDTO {
     public Boolean riscoExpiracao;
 
     public AuditoriaUsuarioDTO() {}
+    
+    // ---------- Construtores ----------
+    
+    public AuditoriaUsuarioDTO(Long usuarioId, String nome, String email, LocalDate dataCadastro) {
+        this.usuarioId = usuarioId;
+        this.nome = nome;
+        this.email = email;
+        this.dataCadastro = dataCadastro;
+    }
 
     // ---------- Builders ----------
 
@@ -136,7 +146,7 @@ public class AuditoriaUsuarioDTO {
 
         // KPIs
         dto.diasDesdeCadastro = (u.dataCadastro != null)
-            ? Duration.between(u.dataCadastro, LocalDateTime.now()).toDays()
+            ? Duration.between(u.dataCadastro.atStartOfDay(), LocalDate.now().atStartOfDay()).toDays()
             : null;
 
         dto.statusSaldo = statusSaldo(dto.saldoTotal);
@@ -182,5 +192,123 @@ public class AuditoriaUsuarioDTO {
         if (s < 10_000) return "MEDIO";
         return "ALTO";
         // Se quiser, dá pra evoluir para considerar também proximidade de expiração.
+    }
+    
+    // ---------- Métodos de Negócio ----------
+    
+    /**
+     * Verifica se o usuário tem atividade recente (últimos 30 dias)
+     */
+    public boolean temAtividadeRecente() {
+        LocalDateTime limite = LocalDateTime.now().minusDays(30);
+        return (ultimaTransacao != null && ultimaTransacao.isAfter(limite)) ||
+               (ultimoMovimento != null && ultimoMovimento.isAfter(limite)) ||
+               (ultimoResgate != null && ultimoResgate.isAfter(limite));
+    }
+    
+    /**
+     * Verifica se o usuário é considerado inativo (sem atividade há mais de 90 dias)
+     */
+    public boolean isInativo() {
+        LocalDateTime limite = LocalDateTime.now().minusDays(90);
+        return (ultimaTransacao == null || ultimaTransacao.isBefore(limite)) &&
+               (ultimoMovimento == null || ultimoMovimento.isBefore(limite)) &&
+               (ultimoResgate == null || ultimoResgate.isBefore(limite));
+    }
+    
+    /**
+     * Calcula o percentual de pontos expirando em relação ao saldo total
+     */
+    public Double getPercentualPontosExpirando() {
+        if (saldoTotal == null || saldoTotal == 0) {
+            return 0.0;
+        }
+        if (pontosExpirandoTotal == null) {
+            return 0.0;
+        }
+        return (pontosExpirandoTotal.doubleValue() / saldoTotal.doubleValue()) * 100.0;
+    }
+    
+    /**
+     * Verifica se o usuário tem risco alto de expiração (> 50% dos pontos)
+     */
+    public boolean temRiscoAltoExpiracao() {
+        return getPercentualPontosExpirando() > 50.0;
+    }
+    
+    /**
+     * Retorna o status de atividade do usuário
+     */
+    public String getStatusAtividade() {
+        if (temAtividadeRecente()) {
+            return "ATIVO";
+        } else if (isInativo()) {
+            return "INATIVO";
+        } else {
+            return "MODERADO";
+        }
+    }
+    
+    /**
+     * Calcula a idade da conta em dias
+     */
+    public Long getIdadeContaDias() {
+        return diasDesdeCadastro;
+    }
+    
+    /**
+     * Verifica se é um usuário novo (menos de 30 dias)
+     */
+    public boolean isUsuarioNovo() {
+        return diasDesdeCadastro != null && diasDesdeCadastro < 30;
+    }
+    
+    /**
+     * Verifica se é um usuário antigo (mais de 365 dias)
+     */
+    public boolean isUsuarioAntigo() {
+        return diasDesdeCadastro != null && diasDesdeCadastro > 365;
+    }
+    
+    /**
+     * Retorna um resumo textual da situação do usuário
+     */
+    public String getResumoSituacao() {
+        StringBuilder resumo = new StringBuilder();
+        
+        resumo.append("Usuário ").append(statusSaldo != null ? statusSaldo.toLowerCase() : "sem pontos");
+        
+        if (riscoExpiracao != null && riscoExpiracao) {
+            resumo.append(" com risco de expiração");
+        }
+        
+        resumo.append(" (").append(getStatusAtividade().toLowerCase()).append(")");
+        
+        if (isUsuarioNovo()) {
+            resumo.append(" - novo usuário");
+        } else if (isUsuarioAntigo()) {
+            resumo.append(" - usuário antigo");
+        }
+        
+        return resumo.toString();
+    }
+    
+    /**
+     * Valida se os dados básicos do DTO estão preenchidos
+     */
+    public boolean isValid() {
+        return usuarioId != null && 
+               nome != null && !nome.trim().isEmpty() &&
+               email != null && !email.trim().isEmpty() &&
+               dataCadastro != null;
+    }
+    
+    /**
+     * Retorna uma versão resumida do DTO para logs ou relatórios
+     */
+    public String toSummary() {
+        return String.format("Usuario[%d] %s (%s) - %s - %d pontos", 
+            usuarioId, nome, email, getStatusAtividade(), 
+            saldoTotal != null ? saldoTotal : 0L);
     }
 }

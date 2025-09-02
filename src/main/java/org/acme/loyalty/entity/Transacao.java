@@ -51,6 +51,9 @@ public class Transacao extends PanacheEntity {
     @Column(name = "status", nullable = false, length = 20)
     public StatusTransacao status;
     
+    @Column(name = "autorizacao")
+    public String autorizacao; // Para idempotência conforme regra 17.3
+    
     @NotNull
     @Column(name = "data_evento", nullable = false)
     public LocalDateTime dataEvento;
@@ -78,12 +81,11 @@ public class Transacao extends PanacheEntity {
         this.categoria = categoria;
         this.parceiroId = parceiroId;
         this.dataEvento = dataEvento;
-        this.status = StatusTransacao.PENDENTE;
+        this.status = StatusTransacao.APROVADA;
     }
     
     // Métodos de negócio
     public void processar() {
-        this.status = StatusTransacao.PROCESSADA;
         this.processadoEm = LocalDateTime.now();
     }
     
@@ -93,7 +95,7 @@ public class Transacao extends PanacheEntity {
     }
     
     public boolean podeSerProcessada() {
-        return StatusTransacao.PENDENTE.equals(this.status);
+        return StatusTransacao.APROVADA.equals(this.status);
     }
     
     public void adicionarMovimentoPontos(MovimentoPontos movimento) {
@@ -104,12 +106,50 @@ public class Transacao extends PanacheEntity {
         movimento.transacao = this;
     }
     
-    // Enum para status
+    // Métodos de negócio conforme regra 17.3
+    /**
+     * Verifica se a transação pode gerar pontos conforme regra 17.3:
+     * - NEGADA não gera pontos
+     */
+    public boolean podeGerarPontos() {
+        return !StatusTransacao.NEGADA.equals(this.status);
+    }
+    
+    /**
+     * Verifica se a transação foi estornada conforme regra 17.3:
+     * - ESTORNADA deve produzir movimento_pontos(ESTORNO)
+     */
+    public boolean foiEstornada() {
+        return StatusTransacao.ESTORNADA.equals(this.status);
+    }
+    
+    /**
+     * Gera chave natural para idempotência conforme regra 17.3:
+     * cartao_id + data_evento + autorizacao (se existir)
+     */
+    public String getChaveNatural() {
+        StringBuilder chave = new StringBuilder();
+        chave.append(cartao.id).append("_");
+        chave.append(dataEvento.toString()).append("_");
+        if (autorizacao != null && !autorizacao.trim().isEmpty()) {
+            chave.append(autorizacao);
+        }
+        return chave.toString();
+    }
+    
+    /**
+     * Verifica se o valor é válido conforme regra 17.3: valor ≥ 0
+     */
+    public boolean temValorValido() {
+        return valor != null && valor.compareTo(BigDecimal.ZERO) >= 0;
+    }
+    
+    // Enum para status conforme regra 17.3
     public enum StatusTransacao {
-        PENDENTE,
-        PROCESSADA,
-        REJEITADA,
-        ESTORNADA
+        APROVADA,    // Transação aprovada e processada
+        NEGADA,      // Transação negada (não gera pontos)
+        ESTORNADA,   // Transação estornada (gera movimento ESTORNO)
+        AJUSTE       // Transação de ajuste manual
     }
 }
 

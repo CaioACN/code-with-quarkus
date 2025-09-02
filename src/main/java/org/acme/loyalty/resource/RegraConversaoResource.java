@@ -101,7 +101,10 @@ public class RegraConversaoResource {
         try {
             // TODO: Implementar serviço de ativação
             
-            return Response.ok(SuccessResponseDTO.ok("Regra ativada com sucesso", null)).build();
+            // TODO: Implementar método ativarRegraConversao no RegraConversaoService
+            // RegraConversaoDTO regra = regraConversaoService.ativarRegraConversao(id);
+            RegraConversaoDTO regra = new RegraConversaoDTO();
+            return Response.ok(SuccessResponseDTO.ok("Regra ativada com sucesso", regra)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorResponseDTO.badRequest("Erro ao ativar regra: " + e.getMessage()))
@@ -115,7 +118,10 @@ public class RegraConversaoResource {
         try {
             // TODO: Implementar serviço de desativação
             
-            return Response.ok(SuccessResponseDTO.ok("Regra desativada com sucesso", null)).build();
+            // TODO: Implementar método desativarRegraConversao no RegraConversaoService
+            // RegraConversaoDTO regra = regraConversaoService.desativarRegraConversao(id);
+            RegraConversaoDTO regra = new RegraConversaoDTO();
+            return Response.ok(SuccessResponseDTO.ok("Regra desativada com sucesso", regra)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorResponseDTO.badRequest("Erro ao desativar regra: " + e.getMessage()))
@@ -129,7 +135,10 @@ public class RegraConversaoResource {
         try {
             // TODO: Implementar serviço de consulta de aplicação
             
-            return Response.ok(SuccessResponseDTO.ok("Aplicação da regra consultada com sucesso", null)).build();
+            // TODO: Implementar método consultarAplicacaoRegraConversao no RegraConversaoService
+            // RegraConversaoDTO regra = regraConversaoService.consultarAplicacaoRegraConversao(id);
+            RegraConversaoDTO regra = new RegraConversaoDTO();
+            return Response.ok(SuccessResponseDTO.ok("Aplicação da regra consultada com sucesso", regra)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ErrorResponseDTO.internalError("Erro ao consultar aplicação: " + e.getMessage()))
@@ -137,4 +146,7 @@ public class RegraConversaoResource {
         }
     }
 }
+
+
+
 

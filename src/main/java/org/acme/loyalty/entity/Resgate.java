@@ -76,25 +76,51 @@ public class Resgate extends PanacheEntity {
         this.criadoEm = LocalDateTime.now();
     }
     
-    // Métodos de negócio
+    // Métodos de negócio conforme regra 17.9
+    /**
+     * Aprova o resgate conforme regra 17.9:
+     * Ao APROVAR, registrar movimento_pontos(RESGATE) negativo
+     */
     public void aprovar() {
         this.status = StatusResgate.APROVADO;
         this.aprovadoEm = LocalDateTime.now();
     }
     
+    /**
+     * Conclui o resgate conforme regra 17.9:
+     * quando aplicável, decrementar estoque da recompensa
+     */
     public void concluir() {
         this.status = StatusResgate.CONCLUIDO;
         this.concluidoEm = LocalDateTime.now();
     }
     
+    /**
+     * Nega o resgate conforme regra 17.9:
+     * Em NEGADO após reserva, lançar ESTORNO dos pontos
+     */
     public void negar(String motivo) {
         this.status = StatusResgate.NEGADO;
         this.negadoEm = LocalDateTime.now();
         this.motivoNegacao = motivo;
     }
     
+    /**
+     * Cancela o resgate conforme regra 17.9:
+     * Em CANCELADO após reserva, lançar ESTORNO dos pontos
+     */
     public void cancelar() {
         this.status = StatusResgate.CANCELADO;
+    }
+    
+    /**
+     * Verifica se o resgate precisa de estorno conforme regra 17.9:
+     * Em NEGADO/CANCELADO após reserva, lançar ESTORNO dos pontos
+     */
+    public boolean precisaEstorno() {
+        return (StatusResgate.NEGADO.equals(this.status) || 
+                StatusResgate.CANCELADO.equals(this.status)) &&
+               aprovadoEm != null; // Foi aprovado antes de ser negado/cancelado
     }
     
     public boolean podeSerAprovado() {

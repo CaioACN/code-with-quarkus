@@ -22,9 +22,9 @@ public class RecompensaRequestDTO {
     @Schema(
         description = "Tipo da recompensa",
         required = true,
-        example = "PRODUTO_FISICO",
+        example = "PRODUTO",
         enumeration = {
-            "PRODUTO_FISICO","PRODUTO_DIGITAL","DESCONTO","CASHBACK","MILHAS","EXPERIENCIA","OUTRO"
+            "MILHAS","GIFT","CASHBACK","PRODUTO"
         }
     )
     public Recompensa.TipoRecompensa tipo;

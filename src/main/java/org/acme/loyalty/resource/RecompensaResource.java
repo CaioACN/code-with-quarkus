@@ -102,7 +102,10 @@ public class RecompensaResource {
         try {
             // TODO: Implementar serviço de ativação
             
-            return Response.ok(SuccessResponseDTO.ok("Recompensa ativada com sucesso", null)).build();
+            // TODO: Implementar método ativarRecompensa no RecompensaService
+            // RecompensaDTO recompensa = recompensaService.ativarRecompensa(id);
+            RecompensaDTO recompensa = new RecompensaDTO();
+            return Response.ok(SuccessResponseDTO.ok("Recompensa ativada com sucesso", recompensa)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorResponseDTO.badRequest("Erro ao ativar recompensa: " + e.getMessage()))
@@ -116,7 +119,10 @@ public class RecompensaResource {
         try {
             // TODO: Implementar serviço de desativação
             
-            return Response.ok(SuccessResponseDTO.ok("Recompensa desativada com sucesso", null)).build();
+            // TODO: Implementar método desativarRecompensa no RecompensaService
+            // RecompensaDTO recompensa = recompensaService.desativarRecompensa(id);
+            RecompensaDTO recompensa = new RecompensaDTO();
+            return Response.ok(SuccessResponseDTO.ok("Recompensa desativada com sucesso", recompensa)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorResponseDTO.badRequest("Erro ao desativar recompensa: " + e.getMessage()))
@@ -130,7 +136,10 @@ public class RecompensaResource {
         try {
             // TODO: Implementar serviço de consulta de estoque
             
-            return Response.ok(SuccessResponseDTO.ok("Estoque da recompensa consultado com sucesso", null)).build();
+            // TODO: Implementar método consultarEstoqueRecompensa no RecompensaService
+            // RecompensaDTO recompensa = recompensaService.consultarEstoqueRecompensa(id);
+            RecompensaDTO recompensa = new RecompensaDTO();
+            return Response.ok(SuccessResponseDTO.ok("Estoque da recompensa consultado com sucesso", recompensa)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ErrorResponseDTO.internalError("Erro ao consultar estoque: " + e.getMessage()))
@@ -147,7 +156,10 @@ public class RecompensaResource {
         try {
             // TODO: Implementar serviço de atualização de estoque
             
-            return Response.ok(SuccessResponseDTO.ok("Estoque atualizado com sucesso", null)).build();
+            // TODO: Implementar método atualizarEstoqueRecompensa no RecompensaService
+            // RecompensaDTO recompensa = recompensaService.atualizarEstoqueRecompensa(id, quantidade);
+            RecompensaDTO recompensa = new RecompensaDTO();
+            return Response.ok(SuccessResponseDTO.ok("Estoque atualizado com sucesso", recompensa)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorResponseDTO.badRequest("Erro ao atualizar estoque: " + e.getMessage()))
@@ -170,4 +182,7 @@ public class RecompensaResource {
         }
     }
 }
+
+
+
 

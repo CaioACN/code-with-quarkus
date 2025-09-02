@@ -130,15 +130,46 @@ public class Recompensa extends PanacheEntity {
         resgate.recompensa = this;
     }
     
-    // Enum para tipos de recompensa
+    // Métodos de negócio conforme regra 17.8
+    /**
+     * Verifica se o custo em pontos é válido conforme regra 17.8: custo_pontos > 0
+     */
+    public boolean temCustoValido() {
+        return custoPontos != null && custoPontos > 0;
+    }
+    
+    /**
+     * Verifica se a recompensa está disponível conforme regra 17.8:
+     * ativo controla visibilidade
+     */
+    public boolean estaDisponivelParaResgate() {
+        return ativo && temCustoValido() && estaDisponivel();
+    }
+    
+    /**
+     * Decrementa estoque atomicamente conforme regra 17.8:
+     * Se estoque não for nulo, controlar decremento atômico para evitar overbooking
+     */
+    public synchronized boolean decrementarEstoqueAtomicamente(Long quantidade) {
+        if (quantidade == null || quantidade <= 0) {
+            return false;
+        }
+        
+        if (estoque == null || estoque >= quantidade) {
+            estoque -= quantidade;
+            atualizadoEm = LocalDateTime.now();
+            return true;
+        }
+        
+        return false; // Estoque insuficiente
+    }
+    
+    // Enum para tipos de recompensa conforme regra 17.8
     public enum TipoRecompensa {
-        PRODUTO_FISICO("Produto Físico"),
-        PRODUTO_DIGITAL("Produto Digital"),
-        DESCONTO("Desconto"),
-        CASHBACK("Cashback"),
         MILHAS("Milhas"),
-        EXPERIENCIA("Experiência"),
-        OUTRO("Outro");
+        GIFT("Gift Card"),
+        CASHBACK("Cashback"),
+        PRODUTO("Produto");
         
         private final String descricao;
         

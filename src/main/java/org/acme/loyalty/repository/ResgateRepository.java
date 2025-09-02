@@ -11,25 +11,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository para Resgate (Panache).
- * Regras principais:
- * - Status controla o fluxo: PENDENTE → APROVADO → CONCLUIDO|NEGADO
- * - Pontos são debitados apenas após aprovação
- * - Histórico completo de resgates é mantido
- *
- * Compatível com Java 17 / Quarkus 3.
- */
 @ApplicationScoped
 public class ResgateRepository implements PanacheRepository<Resgate> {
 
     // --------------------- CRUD helpers ---------------------
 
-    /** Persiste se id == null; caso contrário retorna a entidade gerenciada. */
+    /** Persiste se id == null; caso contrário faz merge e retorna a entidade gerenciada. */
     public Resgate upsert(Resgate r) {
         if (r == null) return null;
-        if (r.id == null) persist(r);
-        return r;
+        if (r.id == null) {
+            persist(r);
+            return r;
+        }
+        return getEntityManager().merge(r);
     }
 
     // --------------------- Busca por atributos ---------------------
@@ -74,6 +68,11 @@ public class ResgateRepository implements PanacheRepository<Resgate> {
         return find("usuario.id = ?1 and criadoEm between ?2 and ?3", usuarioId, inicio, fim).list();
     }
 
+    /** Alias usado pelo AdminService. */
+    public List<Resgate> listByUsuarioBetween(Long usuarioId, LocalDateTime inicio, LocalDateTime fim) {
+        return listByUsuarioAndPeriodo(usuarioId, inicio, fim);
+    }
+
     public List<Resgate> listByCartaoAndPeriodo(Long cartaoId, LocalDateTime inicio, LocalDateTime fim) {
         if (cartaoId == null) return List.of();
         if (inicio == null) inicio = LocalDateTime.now().minusDays(30);
@@ -104,28 +103,34 @@ public class ResgateRepository implements PanacheRepository<Resgate> {
         return find("status = ?1", Resgate.StatusResgate.NEGADO).list();
     }
 
-    public long countPendentes() {
-        return count("status = ?1", Resgate.StatusResgate.PENDENTE);
-    }
+    public long countPendentes()   { return count("status = ?1", Resgate.StatusResgate.PENDENTE); }
+    public long countAprovados()   { return count("status = ?1", Resgate.StatusResgate.APROVADO); }
+    public long countConcluidos()  { return count("status = ?1", Resgate.StatusResgate.CONCLUIDO); }
+    public long countNegados()     { return count("status = ?1", Resgate.StatusResgate.NEGADO); }
 
-    public long countAprovados() {
-        return count("status = ?1", Resgate.StatusResgate.APROVADO);
-    }
-
-    public long countConcluidos() {
-        return count("status = ?1", Resgate.StatusResgate.CONCLUIDO);
-    }
-
-    public long countNegados() {
-        return count("status = ?1", Resgate.StatusResgate.NEGADO);
+    /** Compatível com AdminService: aceita string com o nome do enum. */
+    public Long countByStatus(String status) {
+        if (status == null) return 0L;
+        Resgate.StatusResgate st;
+        try {
+            st = Resgate.StatusResgate.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return 0L;
+        }
+        return count("status = ?1", st);
     }
 
     // --------------------- JOIN FETCH úteis ---------------------
 
     /** Carrega resgate com usuário, cartão e recompensa (evita N+1). */
     public Optional<Resgate> findWithUsuarioAndCartaoAndRecompensa(Long id) {
-        return find("from Resgate r join fetch r.usuario join fetch r.cartao join fetch r.recompensa where r.id = ?1", id)
-                .firstResultOptional();
+        return find("""
+                    from Resgate r
+                    join fetch r.usuario
+                    join fetch r.cartao
+                    join fetch r.recompensa
+                    where r.id = ?1
+                    """, id).firstResultOptional();
     }
 
     /** Carrega resgates do usuário com recompensas (evita N+1). */
@@ -142,59 +147,51 @@ public class ResgateRepository implements PanacheRepository<Resgate> {
 
     // --------------------- Operações de negócio ---------------------
 
-    /** Aprova um resgate pendente. */
     public boolean aprovarResgate(Long resgateId) {
         if (resgateId == null) return false;
+        Optional<Resgate> opt = findByIdOptional(resgateId);
+        if (opt.isEmpty()) return false;
 
-        Optional<Resgate> resgateOpt = findByIdOptional(resgateId);
-        if (resgateOpt.isEmpty()) return false;
+        Resgate r = opt.get();
+        if (!Resgate.StatusResgate.PENDENTE.equals(r.status)) return false;
 
-        Resgate resgate = resgateOpt.get();
-        if (!Resgate.StatusResgate.PENDENTE.equals(resgate.status)) return false;
-
-        resgate.status = Resgate.StatusResgate.APROVADO;
-        resgate.aprovadoEm = LocalDateTime.now();
+        r.status = Resgate.StatusResgate.APROVADO;
+        r.aprovadoEm = LocalDateTime.now();
         return true;
     }
 
-    /** Conclui um resgate aprovado. */
     public boolean concluirResgate(Long resgateId) {
         if (resgateId == null) return false;
+        Optional<Resgate> opt = findByIdOptional(resgateId);
+        if (opt.isEmpty()) return false;
 
-        Optional<Resgate> resgateOpt = findByIdOptional(resgateId);
-        if (resgateOpt.isEmpty()) return false;
+        Resgate r = opt.get();
+        if (!Resgate.StatusResgate.APROVADO.equals(r.status)) return false;
 
-        Resgate resgate = resgateOpt.get();
-        if (!Resgate.StatusResgate.APROVADO.equals(resgate.status)) return false;
-
-        resgate.status = Resgate.StatusResgate.CONCLUIDO;
-        resgate.concluidoEm = LocalDateTime.now();
+        r.status = Resgate.StatusResgate.CONCLUIDO;
+        r.concluidoEm = LocalDateTime.now();
         return true;
     }
 
-    /** Nega um resgate pendente. */
     public boolean negarResgate(Long resgateId, String motivo) {
         if (resgateId == null) return false;
+        Optional<Resgate> opt = findByIdOptional(resgateId);
+        if (opt.isEmpty()) return false;
 
-        Optional<Resgate> resgateOpt = findByIdOptional(resgateId);
-        if (resgateOpt.isEmpty()) return false;
+        Resgate r = opt.get();
+        if (!Resgate.StatusResgate.PENDENTE.equals(r.status)) return false;
 
-        Resgate resgate = resgateOpt.get();
-        if (!Resgate.StatusResgate.PENDENTE.equals(resgate.status)) return false;
-
-        resgate.status = Resgate.StatusResgate.NEGADO;
-        resgate.negadoEm = LocalDateTime.now();
-        resgate.motivoNegacao = motivo;
+        r.status = Resgate.StatusResgate.NEGADO;
+        r.negadoEm = LocalDateTime.now();
+        r.motivoNegacao = motivo;
         return true;
     }
 
-    /** Verifica se usuário tem resgates pendentes. */
     public boolean temResgatesPendentes(Long usuarioId) {
         if (usuarioId == null) return false;
         return count("usuario.id = ?1 and status = ?2", usuarioId, Resgate.StatusResgate.PENDENTE) > 0;
     }
 
-    /** Verifica se usuário tem resgates aprovados não concluídos. */
     public boolean temResgatesAprovadosNaoConcluidos(Long usuarioId) {
         if (usuarioId == null) return false;
         return count("usuario.id = ?1 and status = ?2", usuarioId, Resgate.StatusResgate.APROVADO) > 0;
@@ -207,13 +204,11 @@ public class ResgateRepository implements PanacheRepository<Resgate> {
         if (inicio == null) inicio = LocalDateTime.now().minusDays(30);
         if (fim == null) fim = LocalDateTime.now();
 
-        List<Resgate.StatusResgate> sts = List.of(Resgate.StatusResgate.APROVADO, Resgate.StatusResgate.CONCLUIDO);
-        Object result = find(
-                "select sum(pontosUtilizados) from Resgate " +
-                "where usuario.id = ?1 and status in ?2 and criadoEm between ?3 and ?4",
-                usuarioId, sts, inicio, fim
-        ).firstResult();
-        return (result instanceof Number) ? ((Number) result).longValue() : 0L;
+        var sts = List.of(Resgate.StatusResgate.APROVADO, Resgate.StatusResgate.CONCLUIDO);
+        Object r = find("select sum(pontosUtilizados) from Resgate " +
+                        "where usuario.id = ?1 and status in ?2 and criadoEm between ?3 and ?4",
+                        usuarioId, sts, inicio, fim).firstResult();
+        return (r instanceof Number) ? ((Number) r).longValue() : 0L;
     }
 
     public Long calcularPontosUtilizadosPorCartao(Long cartaoId, LocalDateTime inicio, LocalDateTime fim) {
@@ -221,13 +216,11 @@ public class ResgateRepository implements PanacheRepository<Resgate> {
         if (inicio == null) inicio = LocalDateTime.now().minusDays(30);
         if (fim == null) fim = LocalDateTime.now();
 
-        List<Resgate.StatusResgate> sts = List.of(Resgate.StatusResgate.APROVADO, Resgate.StatusResgate.CONCLUIDO);
-        Object result = find(
-                "select sum(pontosUtilizados) from Resgate " +
-                "where cartao.id = ?1 and status in ?2 and criadoEm between ?3 and ?4",
-                cartaoId, sts, inicio, fim
-        ).firstResult();
-        return (result instanceof Number) ? ((Number) result).longValue() : 0L;
+        var sts = List.of(Resgate.StatusResgate.APROVADO, Resgate.StatusResgate.CONCLUIDO);
+        Object r = find("select sum(pontosUtilizados) from Resgate " +
+                        "where cartao.id = ?1 and status in ?2 and criadoEm between ?3 and ?4",
+                        cartaoId, sts, inicio, fim).firstResult();
+        return (r instanceof Number) ? ((Number) r).longValue() : 0L;
     }
 
     public long countResgatesPorStatus(Resgate.StatusResgate status) {
@@ -237,9 +230,7 @@ public class ResgateRepository implements PanacheRepository<Resgate> {
 
     // --------------------- Paginação & Busca avançada ---------------------
 
-    /**
-     * Busca avançada com filtros opcionais e paginação, ordenada por criadoEm desc.
-     */
+    /** Busca avançada com filtros opcionais e paginação, ordenada por criadoEm desc. */
     public PanacheQuery<Resgate> queryAvancada(Long usuarioId, Long cartaoId, Long recompensaId,
                                                Resgate.StatusResgate status, Long parceiroId,
                                                LocalDateTime criadoDesde, LocalDateTime criadoAte,
@@ -249,40 +240,13 @@ public class ResgateRepository implements PanacheRepository<Resgate> {
         List<Object> params = new ArrayList<>();
         int i = 1;
 
-        if (usuarioId != null) {
-            where.append("usuario.id = ?").append(i++);
-            params.add(usuarioId);
-        }
-        if (cartaoId != null) {
-            if (where.length() > 0) where.append(" and ");
-            where.append("cartao.id = ?").append(i++);
-            params.add(cartaoId);
-        }
-        if (recompensaId != null) {
-            if (where.length() > 0) where.append(" and ");
-            where.append("recompensa.id = ?").append(i++);
-            params.add(recompensaId);
-        }
-        if (status != null) {
-            if (where.length() > 0) where.append(" and ");
-            where.append("status = ?").append(i++);
-            params.add(status);
-        }
-        if (parceiroId != null) {
-            if (where.length() > 0) where.append(" and ");
-            where.append("recompensa.parceiroId = ?").append(i++);
-            params.add(parceiroId);
-        }
-        if (criadoDesde != null) {
-            if (where.length() > 0) where.append(" and ");
-            where.append("criadoEm >= ?").append(i++);
-            params.add(criadoDesde);
-        }
-        if (criadoAte != null) {
-            if (where.length() > 0) where.append(" and ");
-            where.append("criadoEm <= ?").append(i++);
-            params.add(criadoAte);
-        }
+        if (usuarioId != null) { where.append("usuario.id = ?").append(i++); params.add(usuarioId); }
+        if (cartaoId != null)   { if (where.length()>0) where.append(" and "); where.append("cartao.id = ?").append(i++); params.add(cartaoId); }
+        if (recompensaId != null){ if (where.length()>0) where.append(" and "); where.append("recompensa.id = ?").append(i++); params.add(recompensaId); }
+        if (status != null)     { if (where.length()>0) where.append(" and "); where.append("status = ?").append(i++); params.add(status); }
+        if (parceiroId != null) { if (where.length()>0) where.append(" and "); where.append("recompensa.parceiroId = ?").append(i++); params.add(parceiroId); }
+        if (criadoDesde != null){ if (where.length()>0) where.append(" and "); where.append("criadoEm >= ?").append(i++); params.add(criadoDesde); }
+        if (criadoAte != null)  { if (where.length()>0) where.append(" and "); where.append("criadoEm <= ?").append(i++); params.add(criadoAte); }
 
         String jpql = (where.length() > 0 ? where + " " : "") + "order by criadoEm desc";
         PanacheQuery<Resgate> q = (where.length() > 0) ? find(jpql, params.toArray()) : find("order by criadoEm desc");

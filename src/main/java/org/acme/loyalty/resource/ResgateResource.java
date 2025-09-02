@@ -137,7 +137,10 @@ public class ResgateResource {
         try {
             // TODO: Implementar serviço de consulta de status
             
-            return Response.ok(SuccessResponseDTO.ok("Status do resgate consultado com sucesso", null)).build();
+            // TODO: Implementar método consultarStatusResgate no ResgateService
+            // ResgateDTO resgate = resgateService.consultarStatusResgate(id);
+            ResgateDTO resgate = new ResgateDTO();
+            return Response.ok(SuccessResponseDTO.ok("Status do resgate consultado com sucesso", resgate)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ErrorResponseDTO.internalError("Erro ao consultar status: " + e.getMessage()))
@@ -171,7 +174,10 @@ public class ResgateResource {
         try {
             // TODO: Implementar serviço de rastreio
             
-            return Response.ok(SuccessResponseDTO.ok("Rastreio do resgate consultado com sucesso", null)).build();
+            // TODO: Implementar método consultarRastreioResgate no ResgateService
+            // ResgateDTO resgate = resgateService.consultarRastreioResgate(id);
+            ResgateDTO resgate = new ResgateDTO();
+            return Response.ok(SuccessResponseDTO.ok("Rastreio do resgate consultado com sucesso", resgate)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ErrorResponseDTO.internalError("Erro ao consultar rastreio: " + e.getMessage()))
@@ -179,4 +185,7 @@ public class ResgateResource {
         }
     }
 }
+
+
+
 

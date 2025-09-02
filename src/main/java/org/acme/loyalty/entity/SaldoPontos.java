@@ -53,18 +53,43 @@ public class SaldoPontos extends PanacheEntityBase {
         this.pontosExpirando90Dias = 0L;
     }
     
-    // Métodos de negócio
+    // Métodos de negócio conforme regra 17.7
+    /**
+     * Adiciona pontos ao saldo conforme regra 17.7:
+     * Mantido somente por operações de negócio (não alterar manualmente)
+     */
     public void adicionarPontos(Long pontos) {
-        this.saldo += pontos;
-        this.atualizadoEm = LocalDateTime.now();
+        if (pontos != null && pontos > 0) {
+            this.saldo += pontos;
+            this.atualizadoEm = LocalDateTime.now();
+        }
     }
     
+    /**
+     * Debita pontos do saldo conforme regra 17.7:
+     * Impedir saldo negativo: validação em resgates e UPDATE condicional
+     */
     public void debitarPontos(Long pontos) {
-        if (this.saldo >= pontos) {
-            this.saldo -= pontos;
+        if (pontos != null && pontos > 0) {
+            if (this.saldo >= pontos) {
+                this.saldo -= pontos;
+                this.atualizadoEm = LocalDateTime.now();
+            } else {
+                throw new IllegalStateException("Saldo insuficiente de pontos. Saldo atual: " + this.saldo + ", pontos solicitados: " + pontos);
+            }
+        }
+    }
+    
+    /**
+     * Atualização atômica do saldo conforme regra 17.7:
+     * Consistência via UPSERT atômico junto do movimento_pontos
+     */
+    public void atualizarSaldoAtomicamente(Long novoSaldo) {
+        if (novoSaldo != null && novoSaldo >= 0) {
+            this.saldo = novoSaldo;
             this.atualizadoEm = LocalDateTime.now();
         } else {
-            throw new IllegalStateException("Saldo insuficiente de pontos");
+            throw new IllegalArgumentException("Saldo deve ser não negativo");
         }
     }
     

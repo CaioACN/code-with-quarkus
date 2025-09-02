@@ -39,6 +39,11 @@ public class TransacaoService {
 
     @Transactional
     public Transacao criarTransacao(TransacaoRequestDTO request) {
+        // Validações básicas
+        if (request.valor == null || request.valor.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Valor deve ser >= 0");
+        }
+
         // Usuário
         Usuario usuario = usuarioRepository.findByIdOptional(request.usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + request.usuarioId));
@@ -50,22 +55,21 @@ public class TransacaoService {
         if (!cartao.usuario.id.equals(request.usuarioId)) {
             throw new IllegalArgumentException("Cartão não pertence ao usuário informado");
         }
-        if (cartao.estaVencido()) {
-            throw new IllegalArgumentException("Cartão está vencido");
+        if (!cartao.podeReceberTransacoes()) {
+            throw new IllegalArgumentException("Cartão não pode receber transações (vencido ou inativo)");
         }
 
-        // Transação
-        Transacao tx = new Transacao();
-        tx.cartao = cartao;
-        tx.usuario = usuario;
-        tx.valor = request.valor;
-        tx.moeda = request.moeda;
-        tx.mcc = request.mcc;
-        tx.categoria = request.categoria;
-        tx.parceiroId = request.parceiroId;
-        tx.status = Transacao.StatusTransacao.PENDENTE; // enum!
-        tx.dataEvento = (request.dataEvento != null ? request.dataEvento : LocalDateTime.now());
-        tx.processadoEm = null; // pendente ainda não processou
+        // Idempotência conforme regra 17.3
+        var transacaoExistente = transacaoRepository.findByChaveNatural(
+            request.cartaoId, request.dataEvento, request.autorizacao);
+        if (transacaoExistente.isPresent()) {
+            return transacaoExistente.get(); // Retorna transação existente
+        }
+
+        // Criar nova transação
+        Transacao tx = request.toEntity(cartao, usuario);
+        tx.status = Transacao.StatusTransacao.APROVADA; // Conforme regra 17.3
+        tx.processadoEm = null; // será processada posteriormente
 
         transacaoRepository.persist(tx);
 
@@ -136,11 +140,33 @@ public class TransacaoService {
         Transacao tx = transacaoRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
 
-        if (tx.status != Transacao.StatusTransacao.PENDENTE) {
-            throw new IllegalArgumentException("Apenas transações pendentes podem ser deletadas");
+        if (tx.status != Transacao.StatusTransacao.APROVADA) {
+            throw new IllegalArgumentException("Apenas transações aprovadas podem ser deletadas");
         }
 
         transacaoRepository.deleteById(id);
+    }
+
+    // ===================== Estorno conforme regra 17.3 =====================
+    
+    @Transactional
+    public TransacaoResponseDTO estornarTransacao(Long id, String motivo) {
+        Transacao tx = transacaoRepository.findByIdOptional(id)
+                .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
+        
+        if (!tx.podeSerProcessada()) {
+            throw new IllegalArgumentException("Transação não pode ser estornada no status atual: " + tx.status);
+        }
+        
+        // Marcar como estornada
+        tx.status = Transacao.StatusTransacao.ESTORNADA;
+        tx.processadoEm = LocalDateTime.now();
+        
+        transacaoRepository.persist(tx);
+        
+        // TODO: Disparar evento para gerar movimento ESTORNO no serviço de pontos
+        
+        return toTransacaoResponseDTO(tx);
     }
 
     // ===================== Pontos =====================
@@ -154,20 +180,7 @@ public class TransacaoService {
     // ===================== Helpers =====================
 
     private TransacaoResponseDTO toTransacaoResponseDTO(Transacao tx) {
-        return new TransacaoResponseDTO(
-                tx.id,
-                tx.cartao.id,
-                tx.usuario.id,
-                tx.valor,
-                tx.moeda,
-                tx.mcc,
-                tx.categoria,
-                tx.parceiroId,
-                (tx.status != null ? tx.status.name() : null),
-                tx.dataEvento,
-                tx.processadoEm,
-                tx.pontosGerados
-        );
+        return TransacaoResponseDTO.fromEntity(tx);
     }
 
     private LocalDateTime parseDateTimeNullable(String value) {
@@ -206,23 +219,23 @@ public class TransacaoService {
     }
 
     /**
-     * Regras de transição (compatíveis com o enum da entidade):
-     * PENDENTE   -> PROCESSADA, REJEITADA
-     * PROCESSADA -> ESTORNADA
-     * REJEITADA  -> (terminal)
+     * Regras de transição conforme regra 17.3:
+     * APROVADA   -> NEGADA, ESTORNADA, AJUSTE
+     * NEGADA     -> (terminal)
      * ESTORNADA  -> (terminal)
+     * AJUSTE     -> (terminal)
      */
     private boolean isValidStatusTransition(Transacao.StatusTransacao atual,
                                             Transacao.StatusTransacao novo) {
         if (atual == null || novo == null) return false;
         switch (atual) {
-            case PENDENTE:
-                return (novo == Transacao.StatusTransacao.PROCESSADA
-                        || novo == Transacao.StatusTransacao.REJEITADA);
-            case PROCESSADA:
-                return (novo == Transacao.StatusTransacao.ESTORNADA);
-            case REJEITADA:
+            case APROVADA:
+                return (novo == Transacao.StatusTransacao.NEGADA
+                        || novo == Transacao.StatusTransacao.ESTORNADA
+                        || novo == Transacao.StatusTransacao.AJUSTE);
+            case NEGADA:
             case ESTORNADA:
+            case AJUSTE:
             default:
                 return false;
         }

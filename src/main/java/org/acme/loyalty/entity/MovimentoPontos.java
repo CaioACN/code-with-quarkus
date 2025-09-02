@@ -74,7 +74,7 @@ public class MovimentoPontos extends PanacheEntity {
         this.refTransacaoId = transacao.id;
     }
     
-    // Métodos de negócio
+    // Métodos de negócio conforme regra 17.6
     public boolean isAcumulo() {
         return TipoMovimento.ACUMULO.equals(this.tipo);
     }
@@ -93,6 +93,30 @@ public class MovimentoPontos extends PanacheEntity {
     
     public boolean isAjuste() {
         return TipoMovimento.AJUSTE.equals(this.tipo);
+    }
+    
+    /**
+     * Verifica se o movimento é um crédito conforme regra 17.6:
+     * positivo para créditos (ACUMULO, AJUSTE+)
+     */
+    public boolean isCredito() {
+        return (isAcumulo() || isAjuste()) && pontos > 0;
+    }
+    
+    /**
+     * Verifica se o movimento é um débito conforme regra 17.6:
+     * negativo para débitos (RESGATE, EXPIRACAO, ESTORNO)
+     */
+    public boolean isDebito() {
+        return (isResgate() || isExpiração() || isEstorno()) && pontos < 0;
+    }
+    
+    /**
+     * Verifica se o movimento está vinculado a uma transação conforme regra 17.6:
+     * ref_transacao_id vincula acúmulos/estornos à transacao de origem
+     */
+    public boolean estaVinculadoATransacao() {
+        return refTransacaoId != null || transacao != null;
     }
     
     public String getDescricaoTipo() {

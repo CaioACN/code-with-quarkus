@@ -57,6 +57,11 @@ public class TransacaoRequestDTO {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Schema(description = "Data/hora do evento (UTC ou timezone do sistema)", example = "2025-08-15T12:34:56", required = true)
     public LocalDateTime dataEvento;
+    
+    // Idempotência
+    @Size(max = 100)
+    @Schema(description = "Código de autorização para idempotência (opcional)", example = "AUTH123456")
+    public String autorizacao;
 
     // ===================== Helpers =====================
 
@@ -68,6 +73,7 @@ public class TransacaoRequestDTO {
         if (moeda != null) moeda = moeda.trim().toUpperCase();
         if (categoria != null) categoria = categoria.trim();
         if (mcc != null) mcc = mcc.trim();
+        if (autorizacao != null) autorizacao = autorizacao.trim();
     }
 
     /**
@@ -79,7 +85,7 @@ public class TransacaoRequestDTO {
             org.acme.loyalty.entity.Usuario usuario) {
 
         normalize();
-        return new org.acme.loyalty.entity.Transacao(
+        org.acme.loyalty.entity.Transacao transacao = new org.acme.loyalty.entity.Transacao(
                 cartao,
                 usuario,
                 this.valor,
@@ -89,5 +95,7 @@ public class TransacaoRequestDTO {
                 this.parceiroId,
                 this.dataEvento
         );
+        transacao.autorizacao = this.autorizacao;
+        return transacao;
     }
 }

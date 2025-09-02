@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,23 +24,23 @@ public class Usuario extends PanacheEntity {
     public String email;
     
     @NotNull
-    @Column(name = "data_cadastro", nullable = false)
-    public LocalDateTime dataCadastro;
+    @Column(name = "data_cadastro", nullable = false, columnDefinition = "DATE DEFAULT CURRENT_DATE")
+    public LocalDate dataCadastro;
     
-    // Relacionamentos
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // Relacionamentos - efeitos em cascata conforme regra 17.1
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     public List<Cartao> cartoes;
     
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     public List<Transacao> transacoes;
     
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     public List<MovimentoPontos> movimentosPontos;
     
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     public List<SaldoPontos> saldosPontos;
     
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     public List<Resgate> resgates;
     
     // Construtores
@@ -49,7 +49,7 @@ public class Usuario extends PanacheEntity {
     public Usuario(String nome, String email) {
         this.nome = nome;
         this.email = email;
-        this.dataCadastro = LocalDateTime.now();
+        this.dataCadastro = LocalDate.now(); // Conforme regra 17.1: data_cadastro padrão = CURRENT_DATE
     }
     
     // Métodos de negócio

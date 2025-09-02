@@ -80,12 +80,19 @@ public class RegraConversao extends PanacheEntity {
         this.criadoEm = LocalDateTime.now();
     }
     
-    // Métodos de negócio
+    // Métodos de negócio conforme regra 17.4
     public boolean estaVigente() {
         LocalDateTime agora = LocalDateTime.now();
         return ativo && 
                agora.isAfter(vigenciaIni) && 
                (vigenciaFim == null || agora.isBefore(vigenciaFim));
+    }
+    
+    /**
+     * Verifica se o multiplicador é válido conforme regra 17.4: multiplicador ≥ 0
+     */
+    public boolean temMultiplicadorValido() {
+        return multiplicador != null && multiplicador.compareTo(BigDecimal.ZERO) >= 0;
     }
     
     public boolean aplicaParaMcc(String mcc) {
@@ -113,8 +120,45 @@ public class RegraConversao extends PanacheEntity {
         return parceiroId.equals(parceiroIdTransacao);
     }
     
+    /**
+     * Calcula pontos base conforme regra 17.4:
+     * pontos_base = floor(valor * multiplicador) (moeda BRL)
+     */
     public Long calcularPontos(BigDecimal valor) {
-        return valor.multiply(multiplicador).longValue();
+        if (valor == null || multiplicador == null) {
+            return 0L;
+        }
+        return valor.multiply(multiplicador).longValue(); // floor automático no longValue()
+    }
+    
+    /**
+     * Verifica se a regra tem maior prioridade que outra conforme regra 17.4:
+     * maior prioridade primeiro; empate → a mais específica
+     */
+    public boolean temMaiorPrioridadeQue(RegraConversao outra) {
+        if (outra == null) return true;
+        
+        // Maior prioridade primeiro
+        if (!this.prioridade.equals(outra.prioridade)) {
+            return this.prioridade > outra.prioridade;
+        }
+        
+        // Empate: mais específica (parceiro_id > categoria > mcc_regex > geral)
+        int especificidadeThis = getEspecificidade();
+        int especificidadeOutra = outra.getEspecificidade();
+        
+        return especificidadeThis > especificidadeOutra;
+    }
+    
+    /**
+     * Calcula especificidade da regra conforme regra 17.4:
+     * parceiro_id (4) > categoria (3) > mcc_regex (2) > geral (1)
+     */
+    private int getEspecificidade() {
+        if (parceiroId != null) return 4;
+        if (categoria != null && !categoria.trim().isEmpty()) return 3;
+        if (mccRegex != null && !mccRegex.trim().isEmpty()) return 2;
+        return 1;
     }
     
     public void desativar() {

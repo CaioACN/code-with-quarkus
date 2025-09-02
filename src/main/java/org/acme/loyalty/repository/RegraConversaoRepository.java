@@ -78,7 +78,63 @@ public class RegraConversaoRepository implements PanacheRepository<RegraConversa
         return find("vigenciaFim >= ?1 and vigenciaFim <= ?2", inicio, fim).list();
     }
 
-    // --------------------- Regras aplicáveis ---------------------
+    // --------------------- Regras aplicáveis conforme regra 17.4 ---------------------
+    
+    /**
+     * Busca regras aplicáveis para transação conforme regra 17.4:
+     * - Seleção por vigência e prioridade (maior primeiro)
+     * - Escopo por mcc_regex / categoria / parceiro_id
+     */
+    public List<RegraConversao> listarAplicaveisParaTransacao(String mcc, String categoria, Long parceiroId, LocalDate data) {
+        if (data == null) data = LocalDate.now();
+        
+        StringBuilder query = new StringBuilder();
+        var params = new java.util.ArrayList<>();
+        int paramIndex = 1;
+
+        // Vigência obrigatória
+        query.append("ativo = true and vigenciaIni <= ?").append(paramIndex++);
+        params.add(data);
+        query.append(" and (vigenciaFim is null or vigenciaFim >= ?").append(paramIndex++);
+        params.add(data);
+        query.append(")");
+
+        // Filtros opcionais
+        if (mcc != null && !mcc.isBlank()) {
+            query.append(" and (mccRegex is null or mccRegex = '' or mcc ~ mccRegex)");
+        }
+        
+        if (categoria != null && !categoria.isBlank()) {
+            query.append(" and (categoria is null or categoria = '' or lower(categoria) = lower(?").append(paramIndex++);
+            params.add(categoria.trim());
+            query.append("))");
+        }
+        
+        if (parceiroId != null) {
+            query.append(" and (parceiroId is null or parceiroId = ?").append(paramIndex++);
+            params.add(parceiroId);
+            query.append(")");
+        }
+
+        // Ordenação por prioridade (maior primeiro) e especificidade
+        query.append(" order by prioridade desc, " +
+                    "case when parceiroId is not null then 4 " +
+                    "     when categoria is not null and categoria != '' then 3 " +
+                    "     when mccRegex is not null and mccRegex != '' then 2 " +
+                    "     else 1 end desc, id asc");
+
+        return find(query.toString(), params.toArray()).list();
+    }
+    
+    /**
+     * Seleciona a regra mais prioritária conforme regra 17.4:
+     * - Maior prioridade primeiro
+     * - Empate → a mais específica (parceiro_id > categoria > mcc_regex > geral)
+     */
+    public Optional<RegraConversao> selecionarRegraMaisPrioritaria(String mcc, String categoria, Long parceiroId, LocalDate data) {
+        List<RegraConversao> aplicaveis = listarAplicaveisParaTransacao(mcc, categoria, parceiroId, data);
+        return aplicaveis.stream().findFirst();
+    }
 
     /** Regras aplicáveis para MCC e categoria específicos na data. */
     public List<RegraConversao> listarAplicaveis(String mcc, String categoria, LocalDate data) {
