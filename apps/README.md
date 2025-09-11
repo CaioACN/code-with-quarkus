@@ -114,17 +114,38 @@ docker-compose down
 - **PostgreSQL**: localhost:5432
 - **Swagger UI**: http://localhost:8080/q/swagger-ui
 
+### Portas dos Serviços
+
+**Docker (Produção)**:
+- Frontend: http://localhost:80
+- Backend: http://localhost:8080
+- PostgreSQL: localhost:5432
+- Swagger UI: http://localhost:8080/q/swagger-ui
+
+**Desenvolvimento Local**:
+- Backend: http://localhost:8081 (Quarkus dev mode)
+- Frontend: http://localhost:4200 (Angular dev server)
+- PostgreSQL: localhost:5432 (mesmo container Docker)
+- Swagger UI: http://localhost:8081/q/swagger-ui
+- Health Check: http://localhost:8081/q/health
+
 ### 💻 Execução Local (Desenvolvimento)
 
 #### 1. Banco de Dados
 ```bash
 # Subir apenas o PostgreSQL
 docker-compose up postgres -d
+
+# Verificar se está rodando
+docker-compose ps postgres
 ```
 
 #### 2. Backend (Quarkus)
 ```bash
 cd backend
+
+# Primeira execução (instalar dependências)
+mvn clean compile
 
 # Modo desenvolvimento (hot reload)
 mvn quarkus:dev
@@ -132,6 +153,10 @@ mvn quarkus:dev
 # Ou usando o wrapper
 ./mvnw quarkus:dev  # Linux/Mac
 .\mvnw.cmd quarkus:dev  # Windows
+
+# O backend estará disponível em http://localhost:8081
+# Swagger UI: http://localhost:8081/q/swagger-ui
+# Health Check: http://localhost:8081/q/health
 ```
 
 **Portas (Backend Local)**:
@@ -143,18 +168,32 @@ mvn quarkus:dev
 ```bash
 cd frontend
 
-# Instalar dependências
+# Instalar dependências (primeira execução)
 npm install
 
 # Servidor de desenvolvimento
 npm start
 # ou
 ng serve --port 4200
+
+# O frontend estará disponível em http://localhost:4200
 ```
 
 **Portas (Frontend Local)**:
 - **Aplicação**: http://localhost:4200
 - **Proxy para Backend**: Configurado automaticamente
+
+#### 4. Verificação dos Serviços
+```bash
+# Testar backend
+curl http://localhost:8081/q/health
+
+# Testar endpoint de exemplo
+curl http://localhost:8081/admin/dashboard
+
+# Frontend deve estar acessível no navegador
+# http://localhost:4200
+```
 
 ## 📊 Funcionalidades Principais
 
@@ -242,7 +281,9 @@ export const API_CONFIG = {
 - `PUT /admin/resgates/{id}/aprovar` - Aprovar resgate
 - `PUT /admin/resgates/{id}/concluir` - Concluir resgate
 
-**Documentação Completa**: http://localhost:8081/q/swagger-ui
+**Documentação Completa**: 
+- Desenvolvimento: http://localhost:8081/q/swagger-ui
+- Docker: http://localhost:8080/q/swagger-ui
 
 ## 🧪 Testes
 
@@ -261,8 +302,10 @@ npm test
 ## 📈 Observabilidade
 
 ### Health Checks
-- **Backend**: http://localhost:8081/q/health
-- **Métricas**: http://localhost:8081/q/metrics
+- **Backend (Dev)**: http://localhost:8081/q/health
+- **Backend (Docker)**: http://localhost:8080/q/health
+- **Métricas (Dev)**: http://localhost:8081/q/metrics
+- **Métricas (Docker)**: http://localhost:8080/q/metrics
 
 ### Logs
 ```bash
@@ -289,22 +332,88 @@ docker-compose logs -f postgres
 - **Auditoria** de operações críticas
 - **Criptografia** de dados sensíveis
 
-## 🗃️ Banco de Dados
+## 🗃️ Banco de Dados PostgreSQL
 
-### Schema: `loyalty`
+### Configuração
 
-**Versionamento**: Flyway migrations em `backend/src/main/resources/db/migration/`
+**Database**: `quarkus-social` (Docker) / `postgres` (Desenvolvimento)
+**Schema**: `loyalty`
+**Usuário**: `postgres`
+**Senha**: `postgres`
+**Porta**: `5432`
 
-**Principais Tabelas**:
-- `usuarios` - Dados dos usuários
-- `cartoes` - Cartões vinculados
-- `transacoes` - Histórico de compras
-- `saldo_pontos` - Saldos atuais
-- `movimento_pontos` - Histórico de movimentações
-- `recompensas` - Catálogo de produtos
-- `resgates` - Solicitações de resgate
-- `campanhas_bonus` - Regras de campanhas
-- `notificacoes` - Sistema de comunicação
+### Ambientes
+
+**Docker (Produção)**:
+```bash
+# Conexão via container
+Host: postgres (interno) / localhost:5432 (externo)
+Database: quarkus-social
+Schema: loyalty
+```
+
+**Desenvolvimento Local**:
+```bash
+# Usar container PostgreSQL do Docker Compose
+docker-compose up -d postgres
+
+# Conexão local
+Host: localhost:5432
+Database: postgres
+Schema: loyalty
+```
+
+**Testes**:
+```bash
+# Configuração separada para testes
+Host: localhost:6543
+Database: quarkus-social
+Schema: public
+```
+
+### Versionamento e Migrações
+
+**Flyway**: Migrations em `backend/src/main/resources/db/migration/`
+- **V1__init.sql**: Schema inicial completo
+- **Automático**: Executa na inicialização (`quarkus.flyway.migrate-at-start=true`)
+- **Schema**: Cria automaticamente o schema `loyalty`
+
+### Principais Tabelas
+
+**Core Entities**:
+- `usuario` - Dados dos usuários do sistema
+- `cartao` - Cartões vinculados aos usuários
+- `transacao` - Histórico de compras e transações
+- `saldo_pontos` - Saldos atuais por usuário/cartão
+
+**Pontos e Movimentações**:
+- `movimento_pontos` - Histórico detalhado de movimentações
+- `regra_conversao` - Regras de conversão de valor para pontos
+- `campanha_bonus` - Campanhas promocionais e multiplicadores
+
+**Recompensas e Resgates**:
+- `recompensa` - Catálogo de produtos e recompensas
+- `resgate` - Solicitações e histórico de resgates
+
+**Sistema**:
+- `notificacao` - Sistema de notificações (email, push, SMS)
+
+### Comandos Úteis
+
+```bash
+# Conectar ao PostgreSQL (Docker)
+docker exec -it postgres psql -U postgres -d quarkus-social
+
+# Verificar tabelas do schema loyalty
+\dt loyalty.*
+
+# Verificar dados de exemplo
+SELECT * FROM loyalty.usuario LIMIT 5;
+SELECT * FROM loyalty.recompensa LIMIT 5;
+
+# Verificar migrações aplicadas
+SELECT * FROM loyalty.flyway_schema_history;
+```
 
 ## 🤝 Contribuição
 
