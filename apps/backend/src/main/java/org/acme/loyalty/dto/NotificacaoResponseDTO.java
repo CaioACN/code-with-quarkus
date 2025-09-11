@@ -33,19 +33,17 @@ public class NotificacaoResponseDTO {
 
     // ========= Status geral =========
     @Schema(description = "Status geral do processamento",
-            enumeration = {"ACCEPTED","QUEUED","SCHEDULED","SENT","PARTIAL","DELIVERED","FAILED","CANCELLED"},
-            example = "QUEUED")
-    public Status status = Status.ACCEPTED;
+            enumeration = {"AGENDADA","ENFILEIRADA","RETENTANDO","ENVIADA","FALHA","CANCELADA"},
+            example = "ENFILEIRADA")
+    public Status status = Status.ENFILEIRADA;
 
     public enum Status {
-        ACCEPTED,   // request aceito
-        QUEUED,     // colocado na fila
-        SCHEDULED,  // agendado para envio futuro
-        SENT,       // todos os canais enviados (não necessariamente entregues)
-        PARTIAL,    // alguns canais falharam
-        DELIVERED,  // todos os canais confirmaram entrega
-        FAILED,     // todos os canais falharam
-        CANCELLED   // cancelado antes do envio
+        AGENDADA,   // agendado para envio futuro
+        ENFILEIRADA, // colocado na fila
+        RETENTANDO, // tentando reenviar
+        ENVIADA,    // todos os canais enviados
+        FALHA,      // todos os canais falharam
+        CANCELADA   // cancelado antes do envio
     }
 
     @Schema(description = "Mensagem/resumo do processamento", example = "Agendado para 2025-08-27T09:30:00")
@@ -99,17 +97,17 @@ public class NotificacaoResponseDTO {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(description = "Resultado detalhado por canal")
     public static class CanalResultado {
-        @Schema(description = "Canal", enumeration = {"EMAIL","SMS","PUSH"}, example = "EMAIL")
+        @Schema(description = "Canal", enumeration = {"EMAIL","PUSH","SMS","WEBHOOK"}, example = "EMAIL")
         public Canal canal;
 
-        public enum Canal { EMAIL, SMS, PUSH }
+        public enum Canal { EMAIL, PUSH, SMS, WEBHOOK }
 
         @Schema(description = "Status do canal",
-                enumeration = {"QUEUED","SCHEDULED","SENT","DELIVERED","FAILED","CANCELLED"},
-                example = "QUEUED")
-        public CanalStatus status = CanalStatus.QUEUED;
+                enumeration = {"AGENDADA","ENFILEIRADA","RETENTANDO","ENVIADA","FALHA","CANCELADA"},
+                example = "ENFILEIRADA")
+        public CanalStatus status = CanalStatus.ENFILEIRADA;
 
-        public enum CanalStatus { QUEUED, SCHEDULED, SENT, DELIVERED, FAILED, CANCELLED }
+        public enum CanalStatus { AGENDADA, ENFILEIRADA, RETENTANDO, ENVIADA, FALHA, CANCELADA }
 
         @Schema(description = "Provedor/transport utilizado", example = "ses | sns | firebase | twilio")
         public String provider;
@@ -159,16 +157,16 @@ public class NotificacaoResponseDTO {
 
         // Inicializa canais conforme seleção do request
         r.canais = new ArrayList<>();
-        if (Boolean.TRUE.equals(req.viaEmail)) r.canais.add(CanalResultado.of(CanalResultado.Canal.EMAIL, CanalResultado.CanalStatus.QUEUED, null));
-        if (Boolean.TRUE.equals(req.viaSms))   r.canais.add(CanalResultado.of(CanalResultado.Canal.SMS,   CanalResultado.CanalStatus.QUEUED, null));
-        if (Boolean.TRUE.equals(req.viaPush))  r.canais.add(CanalResultado.of(CanalResultado.Canal.PUSH,  CanalResultado.CanalStatus.QUEUED, null));
+        if (Boolean.TRUE.equals(req.viaEmail)) r.canais.add(CanalResultado.of(CanalResultado.Canal.EMAIL, CanalResultado.CanalStatus.ENFILEIRADA, null));
+        if (Boolean.TRUE.equals(req.viaSms))   r.canais.add(CanalResultado.of(CanalResultado.Canal.SMS,   CanalResultado.CanalStatus.ENFILEIRADA, null));
+        if (Boolean.TRUE.equals(req.viaPush))  r.canais.add(CanalResultado.of(CanalResultado.Canal.PUSH,  CanalResultado.CanalStatus.ENFILEIRADA, null));
 
         if (req.enviarApos != null) {
-            r.status = Status.SCHEDULED;
+            r.status = Status.AGENDADA;
             r.scheduledFor = req.enviarApos;
             r.message = "Agendado";
         } else {
-            r.status = Status.QUEUED;
+            r.status = Status.ENFILEIRADA;
             r.message = "Enfileirado";
         }
         r.recomputeTotals();
@@ -179,51 +177,51 @@ public class NotificacaoResponseDTO {
     public void recomputeTotals() {
         if (canais == null || canais.isEmpty()) {
             totalCanais = 0; canaisSucesso = 0; canaisFalha = 0;
-            status = Status.FAILED;
+            status = Status.FALHA;
             return;
         }
         totalCanais = canais.size();
-        int ok = 0, fail = 0, delivered = 0, sent = 0, scheduled = 0;
+        int ok = 0, fail = 0, sent = 0, scheduled = 0;
         int retriesMax = 0;
         for (CanalResultado c : canais) {
             if (c.attempts != null) retriesMax = Math.max(retriesMax, c.attempts);
             switch (c.status) {
-                case DELIVERED -> { ok++; delivered++; }
-                case SENT      -> { ok++; sent++; }
-                case SCHEDULED -> scheduled++;
-                case FAILED    -> fail++;
-                case CANCELLED -> fail++;
-                case QUEUED    -> {}
+                case ENVIADA -> { ok++; sent++; }
+                case AGENDADA -> scheduled++;
+                case FALHA    -> fail++;
+                case CANCELADA -> fail++;
+                case ENFILEIRADA -> {}
+                case RETENTANDO -> {}
             }
         }
         this.retryCount = retriesMax;
         this.canaisSucesso = ok;
         this.canaisFalha = fail;
 
-        if (delivered == totalCanais) {
-            status = Status.DELIVERED;
-            if (deliveredAt == null) deliveredAt = LocalDateTime.now();
+        if (sent == totalCanais) {
+            status = Status.ENVIADA;
+            if (sentAt == null) sentAt = LocalDateTime.now();
         } else if (ok > 0 && fail > 0) {
-            status = Status.PARTIAL;
+            status = Status.ENVIADA;
         } else if (ok > 0) {
-            status = Status.SENT;
+            status = Status.ENVIADA;
             if (sentAt == null) sentAt = LocalDateTime.now();
         } else if (scheduled == totalCanais) {
-            status = Status.SCHEDULED;
+            status = Status.AGENDADA;
         } else if (fail == totalCanais) {
-            status = Status.FAILED;
+            status = Status.FALHA;
             if (failedAt == null) failedAt = LocalDateTime.now();
         } else {
-            // mistura de QUEUED/SENT/SCHEDULED
-            if (sent > 0) status = Status.SENT;
-            else status = Status.QUEUED;
+            // mistura de ENFILEIRADA/ENVIADA/AGENDADA
+            if (sent > 0) status = Status.ENVIADA;
+            else status = Status.ENFILEIRADA;
         }
     }
 
     /** Marca DLQ e ajusta status/horário. */
     public void markDlq(String reason) {
         this.sentToDlq = true;
-        this.status = Status.FAILED;
+        this.status = Status.FALHA;
         this.failedAt = LocalDateTime.now();
         if (this.message == null || this.message.isBlank()) {
             this.message = "Enviado para DLQ: " + Objects.toString(reason, "motivo não informado");
@@ -232,6 +230,6 @@ public class NotificacaoResponseDTO {
 
     /** Verdadeiro se não há falhas e pelo menos um canal foi enviado. */
     public boolean isSuccessful() {
-        return status == Status.SENT || status == Status.DELIVERED;
+        return status == Status.ENVIADA;
     }
 }

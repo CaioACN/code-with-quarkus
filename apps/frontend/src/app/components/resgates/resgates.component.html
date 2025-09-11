@@ -1,0 +1,135 @@
+<div class="resgates-container">
+  <div class="header">
+    <h1>Meus Resgates</h1>
+  </div>
+
+  <!-- Saldo do Usuário -->
+  <div class="saldo-section" *ngIf="saldoUsuario">
+    <h2>Meus Pontos</h2>
+    <div class="saldo-total">
+      <span class="label">Saldo Total:</span>
+      <span class="valor">{{ getSaldoTotal() | number }} pontos</span>
+    </div>
+    
+    <div class="saldos-cartoes" *ngIf="saldoUsuario.saldos.length > 1">
+      <h3>Por Cartão:</h3>
+      <div class="cartao-saldo" *ngFor="let saldo of saldoUsuario.saldos">
+        <span class="cartao-info">Cartão {{ saldo.cartaoId }}:</span>
+        <span class="saldo-valor">{{ saldo.saldo | number }} pontos</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensagens -->
+  <div class="error-message" *ngIf="error">
+    <p>{{ error }}</p>
+  </div>
+
+  <div class="success-message" *ngIf="success">
+    <p>{{ success }}</p>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" *ngIf="loading && !resgateSelecionado">
+    <p>Carregando resgates...</p>
+  </div>
+
+  <!-- Lista de Resgates -->
+  <div class="resgates-section" *ngIf="!loading || resgateSelecionado">
+    <h2>Histórico de Resgates</h2>
+    
+    <div class="resgates-grid" *ngIf="resgates.length > 0">
+      <div 
+        class="resgate-card" 
+        *ngFor="let resgate of resgates"
+        [class.selected]="resgateSelecionado?.id === resgate.id"
+        (click)="selecionarResgate(resgate)"
+      >
+        <div class="card-header">
+          <h3>{{ resgate.recompensa?.descricao || 'Recompensa não informada' }}</h3>
+          <span class="status-badge" [class]="'status-' + resgate.status.toLowerCase()">
+            {{ formatarStatus(resgate.status) }}
+          </span>
+        </div>
+        
+        <div class="card-body">
+          <div class="pontos">
+            <span class="label">Pontos Utilizados:</span>
+            <span class="valor pontos">{{ resgate.pontosUtilizados | number }} pontos</span>
+          </div>
+          
+          <div class="data">
+            <span class="label">Data do Resgate:</span>
+            <span class="valor">{{ formatarData(resgate.dataCriacao) }}</span>
+          </div>
+          
+          <div class="cartao">
+            <span class="label">Cartão:</span>
+            <span class="valor">Cartão {{ resgate.cartaoId }}</span>
+          </div>
+        </div>
+        
+        <div class="card-footer">
+          <div class="status" [class]="'status-' + resgate.status.toLowerCase()">
+            {{ formatarStatus(resgate.status) }}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Mensagem quando não há resgates -->
+    <div class="empty-state" *ngIf="resgates.length === 0">
+      <p>Você ainda não realizou nenhum resgate.</p>
+    </div>
+  </div>
+
+  <!-- Modal de Detalhes do Resgate -->
+  <div class="modal-overlay" *ngIf="resgateSelecionado">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Detalhes do Resgate</h2>
+        <button class="close-btn" (click)="cancelarVisualizacao()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="resgate-info">
+          <h3>{{ resgateSelecionado.recompensa?.descricao || 'Recompensa não informada' }}</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">Status:</span>
+              <span class="value" [class]="'status-' + resgateSelecionado.status.toLowerCase()">
+                {{ formatarStatus(resgateSelecionado.status) }}
+              </span>
+            </div>
+            <div class="info-item">
+              <span class="label">Pontos Utilizados:</span>
+              <span class="value pontos">{{ resgateSelecionado.pontosUtilizados | number }} pontos</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Data do Resgate:</span>
+              <span class="value">{{ formatarData(resgateSelecionado.dataCriacao) }}</span>
+            </div>
+            <div class="info-item" *ngIf="resgateSelecionado.dataAprovacao">
+              <span class="label">Data de Aprovação:</span>
+              <span class="value">{{ formatarData(resgateSelecionado.dataAprovacao) }}</span>
+            </div>
+            <div class="info-item" *ngIf="resgateSelecionado.dataConclusao">
+              <span class="label">Data de Conclusão:</span>
+              <span class="value">{{ formatarData(resgateSelecionado.dataConclusao) }}</span>
+            </div>
+            <div class="info-item" *ngIf="resgateSelecionado.observacoes">
+              <span class="label">Observações:</span>
+              <span class="value">{{ resgateSelecionado.observacoes }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cancelarVisualizacao()">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

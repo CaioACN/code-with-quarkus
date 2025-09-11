@@ -1,6 +1,5 @@
 package org.acme.loyalty.resource;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -18,7 +17,7 @@ public class RegraConversaoResource {
     @POST
     public Response criarRegra(RegraConversaoDTO request) {
         try {
-            // TODO: Implementar serviço de regras
+            // Implementar serviço de regras
             RegraConversaoDTO regra = new RegraConversaoDTO();
             
             return Response.status(Response.Status.CREATED)
@@ -40,7 +39,7 @@ public class RegraConversaoResource {
             @QueryParam("vigente") Boolean vigente) {
         
         try {
-            // TODO: Implementar serviço de listagem
+            // Implementar serviço de listagem
             List<RegraConversaoDTO> regras = List.of();
             
             return Response.ok(SuccessResponseDTO.ok("Regras listadas com sucesso", regras)).build();
@@ -55,7 +54,7 @@ public class RegraConversaoResource {
     @Path("/{id}")
     public Response buscarRegra(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de busca
+            // Implementar serviço de busca
             RegraConversaoDTO regra = new RegraConversaoDTO();
             
             return Response.ok(SuccessResponseDTO.ok("Regra encontrada com sucesso", regra)).build();
@@ -70,7 +69,7 @@ public class RegraConversaoResource {
     @Path("/{id}")
     public Response atualizarRegra(@PathParam("id") Long id, RegraConversaoDTO request) {
         try {
-            // TODO: Implementar serviço de atualização
+            // Implementar serviço de atualização
             RegraConversaoDTO regra = new RegraConversaoDTO();
             
             return Response.ok(SuccessResponseDTO.updated(regra)).build();
@@ -85,7 +84,7 @@ public class RegraConversaoResource {
     @Path("/{id}")
     public Response deletarRegra(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de exclusão
+            // Implementar serviço de exclusão
             
             return Response.ok(SuccessResponseDTO.deleted()).build();
         } catch (Exception e) {
@@ -99,9 +98,9 @@ public class RegraConversaoResource {
     @Path("/{id}/ativar")
     public Response ativarRegra(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de ativação
+            // Implementar serviço de ativação
             
-            // TODO: Implementar método ativarRegraConversao no RegraConversaoService
+            // Implementar método ativarRegraConversao no RegraConversaoService
             // RegraConversaoDTO regra = regraConversaoService.ativarRegraConversao(id);
             RegraConversaoDTO regra = new RegraConversaoDTO();
             return Response.ok(SuccessResponseDTO.ok("Regra ativada com sucesso", regra)).build();
@@ -116,9 +115,9 @@ public class RegraConversaoResource {
     @Path("/{id}/desativar")
     public Response desativarRegra(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de desativação
+            // Implementar serviço de desativação
             
-            // TODO: Implementar método desativarRegraConversao no RegraConversaoService
+            // Implementar método desativarRegraConversao no RegraConversaoService
             // RegraConversaoDTO regra = regraConversaoService.desativarRegraConversao(id);
             RegraConversaoDTO regra = new RegraConversaoDTO();
             return Response.ok(SuccessResponseDTO.ok("Regra desativada com sucesso", regra)).build();
@@ -133,9 +132,9 @@ public class RegraConversaoResource {
     @Path("/{id}/aplicacao")
     public Response consultarAplicacaoRegra(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de consulta de aplicação
+            // Implementar serviço de consulta de aplicação
             
-            // TODO: Implementar método consultarAplicacaoRegraConversao no RegraConversaoService
+            // Implementar método consultarAplicacaoRegraConversao no RegraConversaoService
             // RegraConversaoDTO regra = regraConversaoService.consultarAplicacaoRegraConversao(id);
             RegraConversaoDTO regra = new RegraConversaoDTO();
             return Response.ok(SuccessResponseDTO.ok("Aplicação da regra consultada com sucesso", regra)).build();

@@ -3,50 +3,55 @@ package org.acme.loyalty.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Check;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "campanha_bonus", schema = "loyalty")
+@Check(constraints = "multiplicador_extra >= 0 AND prioridade >= 0 AND (teto IS NULL OR teto > 0)")
 public class CampanhaBonus extends PanacheEntity {
 
-    @NotBlank
-    @Size(max = 120)
+    @NotBlank(message = "Nome é obrigatório")
+    @Size(max = 120, message = "Nome deve ter no máximo 120 caracteres")
     @Column(name = "nome", nullable = false, length = 120)
     public String nome;
 
-    @NotNull
-    @DecimalMin("0.0000")                  // DDL permite default 0.0000
-    @Digits(integer = 4, fraction = 4)     // numeric(8,4) => até 4 inteiros e 4 decimais
+    @NotNull(message = "Multiplicador extra é obrigatório")
+    @DecimalMin(value = "0.0000", inclusive = true, message = "Multiplicador extra deve ser maior ou igual a 0.0000")
+    @DecimalMax(value = "9999.9999", inclusive = true, message = "Multiplicador extra deve ser menor ou igual a 9999.9999")
+    @Digits(integer = 4, fraction = 4, message = "Multiplicador extra deve ter no máximo 4 dígitos inteiros e 4 decimais")
     @Column(name = "multiplicador_extra", nullable = false, precision = 8, scale = 4)
-    public BigDecimal multiplicadorExtra = BigDecimal.ZERO; // evita NULL na inserção
+    public BigDecimal multiplicadorExtra = BigDecimal.ZERO;
 
-    @NotNull
+    @NotNull(message = "Data de início da vigência é obrigatória")
     @Column(name = "vigencia_ini", nullable = false)
-    public LocalDate vigenciaIni;          // DATE no banco
+    public LocalDate vigenciaIni;
 
     @Column(name = "vigencia_fim")
-    public LocalDate vigenciaFim;          // DATE no banco (pode ser NULL)
+    public LocalDate vigenciaFim;
 
-    @Size(max = 60)
+    @Size(max = 60, message = "Segmento deve ter no máximo 60 caracteres")
     @Column(name = "segmento", length = 60)
-    public String segmento;                // opcional
+    public String segmento;
 
-    @NotNull
-    @Min(0)
+    @NotNull(message = "Prioridade é obrigatória")
+    @Min(value = 0, message = "Prioridade deve ser maior ou igual a 0")
     @Column(name = "prioridade", nullable = false)
-    public Integer prioridade = 0;         // default 0 no DDL
+    public Integer prioridade = 0;
 
+    @AssertTrue(message = "Teto deve ser nulo ou maior que zero")
+    public boolean isTetoValido() {
+        return teto == null || teto > 0;
+    }
+    
     @Column(name = "teto")
-    public Long teto;                      // opcional
+    public Long teto; // opcional (NULL ou > 0)
 
     public CampanhaBonus() {}
 
@@ -58,7 +63,9 @@ public class CampanhaBonus extends PanacheEntity {
                          Integer prioridade,
                          Long teto) {
         this.nome = nome;
-        this.multiplicadorExtra = (multiplicadorExtra != null) ? multiplicadorExtra : BigDecimal.ZERO;
+        this.multiplicadorExtra = (multiplicadorExtra != null)
+                ? multiplicadorExtra
+                : BigDecimal.ZERO;
         this.vigenciaIni = vigenciaIni;
         this.vigenciaFim = vigenciaFim;
         this.segmento = segmento;
@@ -66,7 +73,37 @@ public class CampanhaBonus extends PanacheEntity {
         this.teto = teto;
     }
 
-    // --- Regras auxiliares (sem campos inexistentes no DDL) ---
+    // ---- Validações/normalizações de persistência ----
+    @AssertTrue(message = "Data de fim deve ser posterior ou igual à data de início")
+    public boolean isPeriodoValido() {
+        if (vigenciaFim == null || vigenciaIni == null) return true;
+        return !vigenciaFim.isBefore(vigenciaIni);
+    }
+
+    @PrePersist
+    @PreUpdate
+    protected void normalize() {
+        // Normalizar strings
+        if (nome != null) nome = nome.trim();
+        if (segmento != null) segmento = segmento.trim();
+
+        // Aplicar valores padrão conforme DDL
+        if (multiplicadorExtra == null) {
+            multiplicadorExtra = BigDecimal.ZERO;
+        } else {
+            // Garantir escala correta (4 decimais)
+            multiplicadorExtra = multiplicadorExtra.setScale(4, java.math.RoundingMode.HALF_UP);
+        }
+
+        if (prioridade == null || prioridade < 0) {
+            prioridade = 0;
+        }
+
+        // Teto: NULL ou > 0 (não forçar nada, deixar a validação @AssertTrue cuidar)
+    }
+
+    // ---- Regras auxiliares / domínio ----
+    public enum StatusVigencia { AGUARDANDO_INICIO, VIGENTE, PROXIMA_EXPIRACAO, EXPIRADA }
 
     /** Vigente na data atual conforme vigência. */
     public boolean estaVigente() {
@@ -74,8 +111,9 @@ public class CampanhaBonus extends PanacheEntity {
     }
 
     public boolean estaVigenteEm(LocalDate data) {
-        boolean iniciou = data.isEqual(vigenciaIni) || data.isAfter(vigenciaIni);
-        boolean naoExpirou = (vigenciaFim == null) || data.isBefore(vigenciaFim) || data.isEqual(vigenciaFim);
+        if (vigenciaIni == null) return false;
+        boolean iniciou = !data.isBefore(vigenciaIni);
+        boolean naoExpirou = (vigenciaFim == null) || !data.isAfter(vigenciaFim);
         return iniciou && naoExpirou;
     }
 
@@ -85,32 +123,21 @@ public class CampanhaBonus extends PanacheEntity {
         return segmento.equalsIgnoreCase(segmentoUsuario);
     }
 
-    /**
-     * Multiplicador total conforme regra 17.5:
-     * pontos_totais = floor(pontos_base * (1 + multiplicador_extra))
-     */
+    /** Multiplicador total: 1 + extra. */
     public BigDecimal getMultiplicadorTotal() {
         return BigDecimal.ONE.add(multiplicadorExtra);
     }
-    
-    /**
-     * Verifica se o multiplicador extra é válido conforme regra 17.5: multiplicador_extra ≥ 0
-     */
+
+    /** multiplicador_extra ≥ 0 */
     public boolean temMultiplicadorExtraValido() {
         return multiplicadorExtra != null && multiplicadorExtra.compareTo(BigDecimal.ZERO) >= 0;
     }
-    
-    /**
-     * Calcula pontos totais com bônus conforme regra 17.5:
-     * pontos_totais = floor(pontos_base * (1 + multiplicador_extra))
-     */
+
+    /** pontos_totais = floor(pontos_base * (1 + multiplicador_extra)) */
     public Long calcularPontosComBonus(Long pontosBase) {
-        if (pontosBase == null || pontosBase <= 0) {
-            return 0L;
-        }
-        BigDecimal pontosBaseDecimal = BigDecimal.valueOf(pontosBase);
-        BigDecimal pontosTotais = pontosBaseDecimal.multiply(getMultiplicadorTotal());
-        return pontosTotais.longValue(); // floor automático
+        if (pontosBase == null || pontosBase <= 0) return 0L;
+        BigDecimal pontosTotais = BigDecimal.valueOf(pontosBase).multiply(getMultiplicadorTotal());
+        return pontosTotais.longValue(); // trunc -> floor para positivos
     }
 
     public boolean temTeto() {
@@ -128,10 +155,9 @@ public class CampanhaBonus extends PanacheEntity {
         return (hoje.isAfter(limite) || hoje.isEqual(limite)) && !estaExpirada();
     }
 
-    public String getStatusVigencia() {
-        if (estaExpirada()) return "EXPIRADA";
-        if (estaProximaExpiracao()) return "PROXIMA_EXPIRACAO";
-        return estaVigente() ? "VIGENTE" : "AGUARDANDO_INICIO";
+    public StatusVigencia getStatusVigencia() {
+        if (estaExpirada()) return StatusVigencia.EXPIRADA;
+        if (estaProximaExpiracao()) return StatusVigencia.PROXIMA_EXPIRACAO;
+        return estaVigente() ? StatusVigencia.VIGENTE : StatusVigencia.AGUARDANDO_INICIO;
     }
 }
-

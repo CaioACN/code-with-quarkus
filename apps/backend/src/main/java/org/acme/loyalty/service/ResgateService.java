@@ -4,14 +4,17 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
-import org.acme.loyalty.dto.PageRequestDTO;
+import org.acme.loyalty.dto.PageResponseDTO;
 import org.acme.loyalty.dto.ResgateRequestDTO;
 import org.acme.loyalty.dto.ResgateResponseDTO;
 import org.acme.loyalty.entity.Cartao;
+import org.acme.loyalty.entity.MovimentoPontos;
 import org.acme.loyalty.entity.Recompensa;
 import org.acme.loyalty.entity.Resgate;
+import org.acme.loyalty.entity.SaldoPontos;
 import org.acme.loyalty.entity.Usuario;
 import org.acme.loyalty.repository.CartaoRepository;
+import org.acme.loyalty.repository.MovimentoPontosRepository;
 import org.acme.loyalty.repository.RecompensaRepository;
 import org.acme.loyalty.repository.ResgateRepository;
 import org.acme.loyalty.repository.SaldoPontosRepository;
@@ -35,6 +38,8 @@ public class ResgateService {
     RecompensaRepository recompensaRepository;
     @Inject
     SaldoPontosRepository saldoPontosRepository;
+    @Inject
+    MovimentoPontosRepository movimentoPontosRepository;
 
     // ===================== Solicitação =====================
 
@@ -62,11 +67,39 @@ public class ResgateService {
             throw new IllegalArgumentException("Recompensa sem estoque disponível");
         }
 
-        // checa saldo atual (sem debitar ainda)
+        // checa saldo atual
         Long saldoAtual = saldoPontosRepository.obterSaldoAtual(request.usuarioId, request.cartaoId);
         if (saldoAtual < recompensa.custoPontos) {
             throw new IllegalArgumentException("Saldo insuficiente para resgate");
         }
+
+        // Debita pontos imediatamente
+        SaldoPontos saldo = saldoPontosRepository.findByUsuarioAndCartao(request.usuarioId, request.cartaoId)
+                .orElseThrow(() -> new NotFoundException("Saldo não encontrado para o cartão: " + request.cartaoId));
+        
+        saldo.debitarPontos(recompensa.custoPontos.longValue());
+        saldo.atualizadoEm = LocalDateTime.now();
+        saldoPontosRepository.persist(saldo);
+
+        // Cria movimento de pontos RESGATE (negativo)
+        MovimentoPontos movimento = new MovimentoPontos(
+            usuario,
+            cartao,
+            MovimentoPontos.TipoMovimento.RESGATE,
+            -recompensa.custoPontos.intValue(), // negativo para débito
+            "Resgate de recompensa: " + recompensa.descricao
+        );
+        movimentoPontosRepository.persist(movimento);
+
+        // Decrementa o estoque da recompensa
+        recompensa.estoque = recompensa.estoque - 1;
+        
+        // Se o estoque chegou a zero, desativa a recompensa
+        if (recompensa.estoque <= 0) {
+            recompensa.ativo = false;
+        }
+        
+        recompensaRepository.persist(recompensa);
 
         Resgate r = new Resgate();
         r.usuario = usuario;
@@ -102,7 +135,7 @@ public class ResgateService {
             Integer pagina,
             Integer tamanho) {
 
-        PageRequestDTO page = new PageRequestDTO(pagina, tamanho);
+        // PageRequestDTO page = new PageRequestDTO(pagina, tamanho); // Implementar paginação quando necessário
 
         StringBuilder ql = new StringBuilder();
         List<Object> params = new ArrayList<>();
@@ -158,7 +191,7 @@ public class ResgateService {
 
     }
 
-    public List<ResgateResponseDTO> listarResgatesUsuario(Long usuarioId, String status) {
+    public PageResponseDTO<ResgateResponseDTO> listarResgatesUsuario(Long usuarioId, String status, Integer pagina, Integer tamanho) {
         StringBuilder ql = new StringBuilder("usuario.id = ?1");
         List<Object> params = new ArrayList<>();
         params.add(usuarioId);
@@ -168,12 +201,27 @@ public class ResgateService {
             params.add(Resgate.StatusResgate.valueOf(status.trim().toUpperCase()));
         }
 
-        List<Resgate> lista = resgateRepository.find(ql.toString(), params.toArray()).list();
-        return lista.stream().map(ResgateResponseDTO::fromEntity).collect(Collectors.toList());
+        // Paginação
+        int pageIndex = (pagina == null || pagina < 1) ? 0 : pagina - 1;
+        int pageSize = (tamanho == null || tamanho < 1) ? 20 : tamanho;
+        
+        // Busca paginada
+        var query = resgateRepository.find(ql.toString(), params.toArray());
+        List<Resgate> lista = query.page(pageIndex, pageSize).list();
+        
+        // Conta total
+        Long totalElements = resgateRepository.count(ql.toString(), params.toArray());
+        
+        // Converte para DTO
+        List<ResgateResponseDTO> content = lista.stream()
+                .map(ResgateResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+        
+        return PageResponseDTO.of(content, totalElements, pageSize, pageIndex);
     }
 
     public Object acompanharResgate(Long id) {
-        // TODO: implementar quando houver requisitos
+        // Implementar quando houver requisitos
         resgateRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Resgate não encontrado: " + id));
         return null;
@@ -208,20 +256,7 @@ public class ResgateService {
             throw new IllegalStateException("Resgate deve estar aprovado para ser concluído");
         }
 
-        // 1) Debita pontos com validação (não permite ficar negativo)
-        boolean debited = saldoPontosRepository.removerPontos(r.usuario.id, r.cartao.id, r.pontosUtilizados);
-        if (!debited) {
-            throw new IllegalStateException("Saldo insuficiente para concluir o resgate");
-        }
-
-        // 2) Baixa 1 unidade do estoque de forma atômica
-        boolean stocked = recompensaRepository.reservarEstoque(r.recompensa.id, 1);
-        if (!stocked) {
-            // rollback dos pontos
-            saldoPontosRepository.adicionarPontos(r.usuario.id, r.cartao.id, r.pontosUtilizados);
-            throw new IllegalStateException("Falha ao reservar estoque da recompensa");
-        }
-
+        // Pontos já foram debitados na criação do resgate, apenas atualiza status
         r.status = Resgate.StatusResgate.CONCLUIDO;
         r.observacao = observacao;
         r.concluidoEm = LocalDateTime.now();

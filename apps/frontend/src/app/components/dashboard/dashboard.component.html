@@ -1,0 +1,160 @@
+<div class="dashboard-container">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <h1>Dashboard - Sistema de Pontos</h1>
+    <button class="btn-refresh" (click)="carregarDashboard()" [disabled]="loading">
+      <i class="icon-refresh" [class.spinning]="loading"></i>
+      Atualizar
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Carregando dashboard...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-container">
+    <div class="error-message">
+      <i class="icon-error"></i>
+      <p>{{ error }}</p>
+      <button class="btn-retry" (click)="carregarDashboard()">Tentar Novamente</button>
+    </div>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div *ngIf="dashboard && !loading && !error" class="dashboard-content">
+    
+    <!-- Período -->
+    <div class="periodo-info">
+      <h3>Período de Análise</h3>
+      <p>{{ formatarData(dashboard.periodoIni) }} até {{ formatarData(dashboard.periodoFim) }}</p>
+    </div>
+
+    <!-- KPIs Cards -->
+    <div class="kpis-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon usuarios"></div>
+        <div class="kpi-content">
+          <h3>{{ formatarNumero(dashboard.totalUsuarios) }}</h3>
+          <p>Total de Usuários</p>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon cartoes"></div>
+        <div class="kpi-content">
+          <h3>{{ formatarNumero(dashboard.totalCartoes) }}</h3>
+          <p>Total de Cartões</p>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon transacoes"></div>
+        <div class="kpi-content">
+          <h3>{{ formatarNumero(dashboard.totalTransacoes) }}</h3>
+          <p>Transações no Período</p>
+        </div>
+      </div>
+
+      <div class="kpi-card saldo-total">
+        <div class="kpi-icon pontos"></div>
+        <div class="kpi-content">
+          <h3>{{ formatarNumero(dashboard.saldoTotal) }}</h3>
+          <p>Saldo Total de Pontos</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pontos Section -->
+    <div class="pontos-section">
+      <h2>Movimentação de Pontos</h2>
+      <div class="pontos-grid">
+        <div class="ponto-card acumulados">
+          <div class="ponto-icon">+</div>
+          <div class="ponto-content">
+            <h3>{{ formatarNumero(dashboard.pontosAcumulados) }}</h3>
+            <p>Pontos Acumulados</p>
+          </div>
+        </div>
+
+        <div class="ponto-card expirados">
+          <div class="ponto-icon">-</div>
+          <div class="ponto-content">
+            <h3>{{ formatarNumero(dashboard.pontosExpirados) }}</h3>
+            <p>Pontos Expirados</p>
+          </div>
+        </div>
+
+        <div class="ponto-card resgatados">
+          <div class="ponto-icon">↗</div>
+          <div class="ponto-content">
+            <h3>{{ formatarNumero(dashboard.pontosResgatados) }}</h3>
+            <p>Pontos Resgatados</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resgates Section -->
+    <div class="resgates-section">
+      <h2>Status dos Resgates</h2>
+      <div class="resgates-grid">
+        <div class="resgate-card" [style.background-color]="obterCorStatus('PENDENTE')">
+          <h3>{{ formatarNumero(dashboard.resgatesPendentes) }}</h3>
+          <p>Pendentes</p>
+        </div>
+
+        <div class="resgate-card" [style.background-color]="obterCorStatus('APROVADO')">
+          <h3>{{ formatarNumero(dashboard.resgatesAprovados) }}</h3>
+          <p>Aprovados</p>
+        </div>
+
+        <div class="resgate-card" [style.background-color]="obterCorStatus('CONCLUIDO')">
+          <h3>{{ formatarNumero(dashboard.resgatesConcluidos) }}</h3>
+          <p>Concluídos</p>
+        </div>
+
+        <div class="resgate-card" [style.background-color]="obterCorStatus('NEGADO')">
+          <h3>{{ formatarNumero(dashboard.resgatesNegados) }}</h3>
+          <p>Negados</p>
+        </div>
+
+        <div class="resgate-card" [style.background-color]="obterCorStatus('CANCELADO')">
+          <h3>{{ formatarNumero(dashboard.resgatesCancelados) }}</h3>
+          <p>Cancelados</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Recompensas -->
+    <div class="top-section" *ngIf="dashboard.topRecompensas && dashboard.topRecompensas.length > 0">
+      <h2>Top Recompensas</h2>
+      <div class="top-list">
+        <div class="top-item" *ngFor="let recompensa of dashboard.topRecompensas; let i = index">
+          <div class="rank">{{ i + 1 }}</div>
+          <div class="content">
+            <h4>{{ recompensa.descricao }}</h4>
+            <p>{{ formatarNumero(recompensa.quantidade) }} resgates • {{ formatarNumero(recompensa.pontosUtilizados) }} pontos</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Usuários -->
+    <div class="top-section" *ngIf="dashboard.topUsuarios && dashboard.topUsuarios.length > 0">
+      <h2>Top Usuários</h2>
+      <div class="top-list">
+        <div class="top-item" *ngFor="let usuario of dashboard.topUsuarios; let i = index">
+          <div class="rank">{{ i + 1 }}</div>
+          <div class="content">
+            <h4>{{ usuario.nome }}</h4>
+            <p>{{ formatarNumero(usuario.pontosAcumulados) }} acumulados • {{ formatarNumero(usuario.pontosResgatados) }} resgatados</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

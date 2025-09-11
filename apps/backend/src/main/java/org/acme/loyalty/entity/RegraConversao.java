@@ -2,59 +2,60 @@ package org.acme.loyalty.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Check;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 @Entity
-@Table(name = "regra_conversao")
+@Table(name = "regra_conversao", schema = "loyalty")
+@Check(constraints = "multiplicador >= 0 AND prioridade >= 0 AND (teto_mensal IS NULL OR teto_mensal > 0)")
 public class RegraConversao extends PanacheEntity {
     
-    @NotBlank
-    @Size(max = 100)
+    @NotBlank(message = "Nome é obrigatório")
+    @Size(max = 100, message = "Nome deve ter no máximo 100 caracteres")
     @Column(name = "nome", nullable = false, length = 100)
     public String nome;
     
-    @NotNull
-    @Positive
+    @NotNull(message = "Multiplicador é obrigatório")
+    @DecimalMin(value = "0.0000", inclusive = true, message = "Multiplicador deve ser maior ou igual a 0.0000")
+    @Digits(integer = 4, fraction = 4, message = "Multiplicador deve ter no máximo 4 dígitos inteiros e 4 decimais")
     @Column(name = "multiplicador", nullable = false, precision = 8, scale = 4)
     public BigDecimal multiplicador;
     
-    @Size(max = 100)
+    @Size(max = 100, message = "MCC Regex deve ter no máximo 100 caracteres")
     @Column(name = "mcc_regex", length = 100)
     public String mccRegex;
     
-    @Size(max = 100)
+    @Size(max = 100, message = "Categoria deve ter no máximo 100 caracteres")
     @Column(name = "categoria", length = 100)
     public String categoria;
     
     @Column(name = "parceiro_id")
     public Long parceiroId;
     
-    @NotNull
+    @NotNull(message = "Data de início da vigência é obrigatória")
     @Column(name = "vigencia_ini", nullable = false)
     public LocalDateTime vigenciaIni;
     
     @Column(name = "vigencia_fim")
     public LocalDateTime vigenciaFim;
     
-    @NotNull
+    @NotNull(message = "Prioridade é obrigatória")
+    @Min(value = 0, message = "Prioridade deve ser maior ou igual a 0")
     @Column(name = "prioridade", nullable = false)
     public Integer prioridade;
     
     @Column(name = "teto_mensal")
     public Long tetoMensal;
     
-    @NotNull
+    @NotNull(message = "Status ativo é obrigatório")
     @Column(name = "ativo", nullable = false)
-    public Boolean ativo;
+    public Boolean ativo = true;
     
-    @NotNull
+    @NotNull(message = "Data de criação é obrigatória")
     @Column(name = "criado_em", nullable = false)
     public LocalDateTime criadoEm;
     
@@ -80,6 +81,36 @@ public class RegraConversao extends PanacheEntity {
         this.criadoEm = LocalDateTime.now();
     }
     
+    // ---- Normalização de dados ----
+    @PrePersist
+    @PreUpdate
+    protected void normalize() {
+        // Normalizar strings
+        if (nome != null) nome = nome.trim();
+        if (mccRegex != null) mccRegex = mccRegex.trim();
+        if (categoria != null) categoria = categoria.trim();
+        
+        // Normalizar multiplicador para 4 casas decimais
+        if (multiplicador != null) {
+            multiplicador = multiplicador.setScale(4, java.math.RoundingMode.HALF_UP);
+        }
+        
+        // Definir data de criação se não foi definida
+        if (criadoEm == null) {
+            criadoEm = LocalDateTime.now();
+        }
+        
+        // Definir ativo se não foi definido
+        if (ativo == null) {
+            ativo = true;
+        }
+        
+        // Definir prioridade se não foi definida
+        if (prioridade == null) {
+            prioridade = 0;
+        }
+    }
+    
     // Métodos de negócio conforme regra 17.4
     public boolean estaVigente() {
         LocalDateTime agora = LocalDateTime.now();
@@ -89,10 +120,32 @@ public class RegraConversao extends PanacheEntity {
     }
     
     /**
-     * Verifica se o multiplicador é válido conforme regra 17.4: multiplicador ≥ 0
+     * Verifica se o multiplicador é válido conforme DDL: multiplicador >= 0
      */
     public boolean temMultiplicadorValido() {
         return multiplicador != null && multiplicador.compareTo(BigDecimal.ZERO) >= 0;
+    }
+    
+    /**
+     * Verifica se a prioridade é válida conforme DDL: prioridade >= 0
+     */
+    public boolean temPrioridadeValida() {
+        return prioridade != null && prioridade >= 0;
+    }
+    
+    /**
+     * Verifica se o teto mensal é válido conforme DDL: teto_mensal IS NULL OR teto_mensal > 0
+     */
+    public boolean temTetoMensalValido() {
+        return tetoMensal == null || tetoMensal > 0;
+    }
+    
+    /**
+     * Verifica se o período de vigência é válido
+     */
+    public boolean temPeriodoValido() {
+        if (vigenciaFim == null || vigenciaIni == null) return true;
+        return !vigenciaFim.isBefore(vigenciaIni);
     }
     
     public boolean aplicaParaMcc(String mcc) {

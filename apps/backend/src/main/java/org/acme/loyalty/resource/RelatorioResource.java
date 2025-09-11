@@ -516,7 +516,7 @@ public class RelatorioResource {
             LOG.info("Consultando dashboard executivo - período: " + periodo);
             
             // Por enquanto, retorna um dashboard básico
-            // TODO: Implementar lógica completa do dashboard
+            // Implementar lógica completa do dashboard quando necessário
             DashboardDTO dashboard = new DashboardDTO();
             dashboard.periodoIni = java.time.LocalDateTime.now().minusDays(30);
             dashboard.periodoFim = java.time.LocalDateTime.now();

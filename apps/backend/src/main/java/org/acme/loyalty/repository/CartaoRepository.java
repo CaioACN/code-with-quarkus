@@ -3,7 +3,6 @@ package org.acme.loyalty.repository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
-import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.LockModeType;
 import org.acme.loyalty.entity.Cartao;
@@ -24,8 +23,8 @@ import java.util.Optional;
 @ApplicationScoped
 public class CartaoRepository implements PanacheRepository<Cartao> {
 
-    private static final Sort DEFAULT_SORT =
-            Sort.by("validade").ascending().and("id").ascending();
+    // private static final Sort DEFAULT_SORT =
+    //         Sort.by("validade").ascending().and("id").ascending();
 
     // --------------------- CRUD helpers ---------------------
 

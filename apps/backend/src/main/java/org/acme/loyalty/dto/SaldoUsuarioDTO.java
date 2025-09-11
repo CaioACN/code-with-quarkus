@@ -1,12 +1,22 @@
 package org.acme.loyalty.dto;
 
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.List;
 
+@Schema(name = "SaldoUsuario", description = "DTO para saldo de pontos de um usuário")
 public class SaldoUsuarioDTO {
     
+    @Schema(description = "ID do usuário", example = "1")
     public Long usuarioId;
+    
+    @Schema(description = "Lista de saldos por cartão")
     public List<SaldoPontosDTO> saldos;
+    
+    @Schema(description = "Saldo total de pontos do usuário", example = "5000")
     public Long saldoTotal;
+    
+    @Schema(description = "Total de pontos expirando", example = "500")
     public Long totalPontosExpirando;
     
     // Construtores

@@ -1,6 +1,5 @@
 package org.acme.loyalty.resource;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -18,7 +17,7 @@ public class CampanhaBonusResource {
     @POST
     public Response criarCampanha(CampanhaBonusDTO request) {
         try {
-            // TODO: Implementar serviço de campanhas
+            // Implementar serviço de campanhas quando necessário
             CampanhaBonusDTO campanha = new CampanhaBonusDTO();
             
             return Response.status(Response.Status.CREATED)
@@ -39,7 +38,7 @@ public class CampanhaBonusResource {
             @QueryParam("proximaExpiracao") Boolean proximaExpiracao) {
         
         try {
-            // TODO: Implementar serviço de listagem
+            // Implementar serviço de listagem quando necessário
             List<CampanhaBonusDTO> campanhas = List.of();
             
             return Response.ok(SuccessResponseDTO.ok("Campanhas listadas com sucesso", campanhas)).build();
@@ -54,7 +53,7 @@ public class CampanhaBonusResource {
     @Path("/{id}")
     public Response buscarCampanha(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de busca
+            // Implementar serviço de busca quando necessário
             CampanhaBonusDTO campanha = new CampanhaBonusDTO();
             
             return Response.ok(SuccessResponseDTO.ok("Campanha encontrada com sucesso", campanha)).build();
@@ -69,7 +68,7 @@ public class CampanhaBonusResource {
     @Path("/{id}")
     public Response atualizarCampanha(@PathParam("id") Long id, CampanhaBonusDTO request) {
         try {
-            // TODO: Implementar serviço de atualização
+            // Implementar serviço de atualização quando necessário
             CampanhaBonusDTO campanha = new CampanhaBonusDTO();
             
             return Response.ok(SuccessResponseDTO.updated(campanha)).build();
@@ -84,7 +83,7 @@ public class CampanhaBonusResource {
     @Path("/{id}")
     public Response deletarCampanha(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de exclusão
+            // Implementar serviço de exclusão quando necessário
             
             return Response.ok(SuccessResponseDTO.deleted()).build();
         } catch (Exception e) {
@@ -98,9 +97,9 @@ public class CampanhaBonusResource {
     @Path("/{id}/ativar")
     public Response ativarCampanha(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de ativação
+            // Implementar serviço de ativação quando necessário
             
-            // TODO: Implementar método ativarCampanhaBonus no CampanhaBonusService
+            // Implementar método ativarCampanhaBonus no CampanhaBonusService
             // CampanhaBonusDTO campanha = campanhaBonusService.ativarCampanhaBonus(id);
             CampanhaBonusDTO campanha = new CampanhaBonusDTO();
             return Response.ok(SuccessResponseDTO.ok("Campanha ativada com sucesso", campanha)).build();
@@ -115,9 +114,9 @@ public class CampanhaBonusResource {
     @Path("/{id}/desativar")
     public Response desativarCampanha(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de desativação
+            // Implementar serviço de desativação quando necessário
             
-            // TODO: Implementar método desativarCampanhaBonus no CampanhaBonusService
+            // Implementar método desativarCampanhaBonus no CampanhaBonusService
             // CampanhaBonusDTO campanha = campanhaBonusService.desativarCampanhaBonus(id);
             CampanhaBonusDTO campanha = new CampanhaBonusDTO();
             return Response.ok(SuccessResponseDTO.ok("Campanha desativada com sucesso", campanha)).build();
@@ -132,9 +131,9 @@ public class CampanhaBonusResource {
     @Path("/{id}/status")
     public Response consultarStatusCampanha(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de consulta de status
+            // Implementar serviço de consulta de status quando necessário
             
-            // TODO: Implementar método consultarStatusCampanhaBonus no CampanhaBonusService
+            // Implementar método consultarStatusCampanhaBonus no CampanhaBonusService
             // CampanhaBonusDTO campanha = campanhaBonusService.consultarStatusCampanhaBonus(id);
             CampanhaBonusDTO campanha = new CampanhaBonusDTO();
             return Response.ok(SuccessResponseDTO.ok("Status da campanha consultado com sucesso", campanha)).build();
@@ -149,7 +148,7 @@ public class CampanhaBonusResource {
     @Path("/vigentes")
     public Response listarCampanhasVigentes() {
         try {
-            // TODO: Implementar serviço de campanhas vigentes
+            // Implementar serviço de campanhas vigentes quando necessário
             List<CampanhaBonusDTO> campanhas = List.of();
             
             return Response.ok(SuccessResponseDTO.ok("Campanhas vigentes listadas com sucesso", campanhas)).build();

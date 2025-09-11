@@ -58,9 +58,7 @@ public class NotificacaoResource {
         try {
             LOG.info("Listando notificações do usuário - ID: " + usuarioId);
             
-            // TODO: Implementar método listarNotificacoesUsuario no NotificacaoService
-            // List<NotificacaoResponseDTO> notificacoes = notificacaoService.listarNotificacoesUsuario(usuarioId, tipo, lida, pagina, tamanho);
-            List<NotificacaoResponseDTO> notificacoes = List.of();
+            List<NotificacaoResponseDTO> notificacoes = notificacaoService.listarNotificacoes(usuarioId, tipo, lida, pagina, tamanho);
             
             LOG.info("Notificações listadas com sucesso - usuário: " + usuarioId);
             
@@ -82,13 +80,14 @@ public class NotificacaoResource {
     @APIResponse(responseCode = "500", description = "Erro interno do servidor")
     public Response marcarComoLida(
             @Parameter(description = "ID da notificação", required = true, example = "123")
-            @PathParam("id") @Min(1) Long id) {
+            @PathParam("id") @Min(1) Long id,
+            @Parameter(description = "ID do usuário", required = true, example = "123")
+            @QueryParam("usuarioId") @Min(1) Long usuarioId) {
         
         try {
             LOG.info("Marcando notificação como lida - ID: " + id);
             
-            // TODO: Implementar método marcarComoLida no NotificacaoService
-            // notificacaoService.marcarComoLida(id);
+            notificacaoService.marcarComoLida(id, usuarioId);
             
             LOG.info("Notificação marcada como lida com sucesso - ID: " + id);
             
@@ -115,8 +114,7 @@ public class NotificacaoResource {
         try {
             LOG.info("Marcando todas as notificações como lidas - usuário: " + usuarioId);
             
-            // TODO: Implementar método marcarTodasComoLidas no NotificacaoService
-            // notificacaoService.marcarTodasComoLidas(usuarioId);
+            notificacaoService.marcarTodasComoLidas(usuarioId);
             
             LOG.info("Todas as notificações marcadas como lidas com sucesso - usuário: " + usuarioId);
             
@@ -143,7 +141,7 @@ public class NotificacaoResource {
         try {
             LOG.info("Deletando notificação - ID: " + id);
             
-            // TODO: Implementar método deletarNotificacao no NotificacaoService
+            // Implementar método deletarNotificacao no NotificacaoService
             // notificacaoService.deletarNotificacao(id);
             
             LOG.info("Notificação deletada com sucesso - ID: " + id);
@@ -174,7 +172,7 @@ public class NotificacaoResource {
         try {
             LOG.info("Limpando notificações do usuário - ID: " + usuarioId + ", tipo: " + tipo);
             
-            // TODO: Implementar método limparNotificacoesUsuario no NotificacaoService
+            // Implementar método limparNotificacoesUsuario no NotificacaoService
             // notificacaoService.limparNotificacoesUsuario(usuarioId, tipo);
             
             LOG.info("Notificações limpas com sucesso - usuário: " + usuarioId);
@@ -203,7 +201,7 @@ public class NotificacaoResource {
         try {
             LOG.info("Contando notificações não lidas - usuário: " + usuarioId);
             
-            // TODO: Implementar método contarNotificacoesNaoLidas no NotificacaoService
+            // Implementar método contarNotificacoesNaoLidas no NotificacaoService
             // Long count = notificacaoService.contarNotificacoesNaoLidas(usuarioId);
             Long count = 0L;
             
@@ -233,13 +231,11 @@ public class NotificacaoResource {
         try {
             LOG.info("Enviando notificação - usuário: " + request.usuarioId);
             
-            // TODO: Implementar método enviarNotificacao no NotificacaoService
-            // NotificacaoResponseDTO response = notificacaoService.enviarNotificacao(request);
-            NotificacaoResponseDTO response = new NotificacaoResponseDTO();
+            notificacaoService.enviarNotificacao(request);
             
             LOG.info("Notificação enviada com sucesso - usuário: " + request.usuarioId);
             
-            return Response.ok(SuccessResponseDTO.ok("Notificação enviada com sucesso", response)).build();
+            return Response.ok(SuccessResponseDTO.ok("Notificação enviada com sucesso")).build();
         } catch (Exception e) {
             LOG.error("Erro ao enviar notificação - usuário: " + request.usuarioId + ", erro: " + e.getMessage(), e);
             return Response.status(Response.Status.BAD_REQUEST)
@@ -263,9 +259,7 @@ public class NotificacaoResource {
         try {
             LOG.info("Consultando configurações de notificação - usuário: " + usuarioId);
             
-            // TODO: Implementar método consultarConfiguracoesNotificacao no NotificacaoService
-            // ConfiguracaoNotificacaoDTO config = notificacaoService.consultarConfiguracoesNotificacao(usuarioId);
-            ConfiguracaoNotificacaoDTO config = new ConfiguracaoNotificacaoDTO();
+            ConfiguracaoNotificacaoDTO config = notificacaoService.consultarConfiguracaoUsuario(usuarioId);
             
             LOG.info("Configurações consultadas com sucesso - usuário: " + usuarioId);
             
@@ -297,13 +291,11 @@ public class NotificacaoResource {
         try {
             LOG.info("Atualizando configurações de notificação - usuário: " + usuarioId);
             
-            // TODO: Implementar método atualizarConfiguracoesNotificacao no NotificacaoService
-            // ConfiguracaoNotificacaoDTO updatedConfig = notificacaoService.atualizarConfiguracoesNotificacao(usuarioId, config);
-            ConfiguracaoNotificacaoDTO updatedConfig = config;
+            notificacaoService.atualizarConfiguracaoUsuario(usuarioId, config);
             
             LOG.info("Configurações atualizadas com sucesso - usuário: " + usuarioId);
             
-            return Response.ok(SuccessResponseDTO.ok("Configurações de notificação atualizadas com sucesso", updatedConfig)).build();
+            return Response.ok(SuccessResponseDTO.ok("Configurações de notificação atualizadas com sucesso", config)).build();
         } catch (Exception e) {
             LOG.error("Erro ao atualizar configurações de notificação - usuário: " + usuarioId + ", erro: " + e.getMessage(), e);
             return Response.status(Response.Status.BAD_REQUEST)

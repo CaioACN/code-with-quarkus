@@ -1,6 +1,7 @@
 package org.acme.loyalty.dto;
 
 import org.acme.loyalty.entity.CampanhaBonus;
+import org.acme.loyalty.entity.CampanhaBonus.StatusVigencia;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -44,7 +45,7 @@ public class CampanhaBonusResponseDTO {
     @Schema(description = "Status da vigência da campanha", 
             example = "VIGENTE", 
             enumeration = {"AGUARDANDO_INICIO", "VIGENTE", "PROXIMA_EXPIRACAO", "EXPIRADA"})
-    public String statusVigencia;
+    public StatusVigencia statusVigencia;
 
     @Schema(description = "Data/hora de criação do registro", example = "2025-08-01T10:15:30")
     public LocalDateTime criadoEm;
@@ -71,8 +72,8 @@ public class CampanhaBonusResponseDTO {
         dto.statusVigencia = entity.getStatusVigencia();
 
         // Caso sua tabela tenha colunas de auditoria, mapeie aqui
-        dto.criadoEm = null;       // TODO: mapear se existir
-        dto.atualizadoEm = null;   // TODO: mapear se existir
+        dto.criadoEm = null;       // Mapear se existir
+        dto.atualizadoEm = null;   // Mapear se existir
 
         return dto;
     }

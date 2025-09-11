@@ -1,0 +1,36 @@
+<!-- Sistema de Pontos do Cartão -->
+<div class="app-container">
+  <!-- Navegação -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <h1>💳 Sistema de Pontos</h1>
+    </div>
+    <div class="nav-links">
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
+        <i class="icon-dashboard"></i>
+        Dashboard
+      </a>
+      <a routerLink="/transacoes" routerLinkActive="active" class="nav-link">
+        <i class="icon-transactions"></i>
+        Transações
+      </a>
+      <a routerLink="/recompensas" routerLinkActive="active" class="nav-link">
+        <i class="icon-rewards"></i>
+        Recompensas
+      </a>
+      <a routerLink="/campanhas" routerLinkActive="active" class="nav-link">
+        <i class="icon-campaigns"></i>
+        Campanhas
+      </a>
+      <a routerLink="/resgates" routerLinkActive="active" class="nav-link">
+        <i class="icon-redemptions"></i>
+        Resgates
+        </a>
+      </div>
+  </nav>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

@@ -1,26 +1,54 @@
 package org.acme.loyalty.dto;
 
+import org.acme.loyalty.entity.MovimentoPontos;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 
+@Schema(name = "MovimentoPontos", description = "DTO para movimentação de pontos")
 public class MovimentoPontosDTO {
     
+    @Schema(description = "ID do movimento", example = "1")
     public Long id;
+    
+    @Schema(description = "ID do usuário", example = "1")
     public Long usuarioId;
+    
+    @Schema(description = "ID do cartão", example = "1")
     public Long cartaoId;
-    public String tipo;
+    
+    @Schema(description = "Tipo do movimento", example = "ACUMULO", 
+            enumeration = {"ACUMULO","EXPIRACAO","RESGATE","ESTORNO","AJUSTE"})
+    public MovimentoPontos.TipoMovimento tipo;
+    
+    @Schema(description = "Quantidade de pontos", example = "100")
     public Integer pontos;
+    
+    @Schema(description = "ID da transação de referência", example = "1")
     public Long refTransacaoId;
+    
+    @Schema(description = "Observação do movimento", example = "Pontos acumulados por compra")
     public String observacao;
+    
+    @Schema(description = "Data de criação do movimento", example = "2025-09-09T10:00:00")
     public LocalDateTime criadoEm;
+    
+    @Schema(description = "ID do job que processou o movimento", example = "job-123")
     public String jobId;
+    
+    @Schema(description = "Regra aplicada no movimento", example = "Regra Restaurantes")
     public String regraAplicada;
+    
+    @Schema(description = "Campanha aplicada no movimento", example = "Campanha Setembro")
     public String campanhaAplicada;
+    
+    @Schema(description = "Descrição amigável do tipo", example = "Acúmulo de pontos")
     public String descricaoTipo;
     
     // Construtores
     public MovimentoPontosDTO() {}
     
-    public MovimentoPontosDTO(Long id, Long usuarioId, Long cartaoId, String tipo, 
+    public MovimentoPontosDTO(Long id, Long usuarioId, Long cartaoId, MovimentoPontos.TipoMovimento tipo, 
                               Integer pontos, Long refTransacaoId, String observacao, 
                               LocalDateTime criadoEm, String jobId, String regraAplicada, 
                               String campanhaAplicada) {
@@ -43,13 +71,30 @@ public class MovimentoPontosDTO {
         if (tipo == null) return "Movimento de pontos";
         
         switch (tipo) {
-            case "ACUMULO": return "Acúmulo de pontos";
-            case "EXPIRACAO": return "Expiração de pontos";
-            case "RESGATE": return "Resgate de pontos";
-            case "ESTORNO": return "Estorno de pontos";
-            case "AJUSTE": return "Ajuste de pontos";
+            case ACUMULO: return "Acúmulo de pontos";
+            case EXPIRACAO: return "Expiração de pontos";
+            case RESGATE: return "Resgate de pontos";
+            case ESTORNO: return "Estorno de pontos";
+            case AJUSTE: return "Ajuste de pontos";
             default: return "Movimento de pontos";
         }
+    }
+    
+    // Método estático para criar DTO a partir da entidade
+    public static MovimentoPontosDTO fromEntity(MovimentoPontos entity) {
+        return new MovimentoPontosDTO(
+            entity.id,
+            entity.usuario.id,
+            entity.cartao.id,
+            entity.tipo,
+            entity.pontos,
+            entity.refTransacaoId,
+            entity.observacao,
+            entity.criadoEm,
+            entity.jobId,
+            entity.regraAplicada,
+            entity.campanhaAplicada
+        );
     }
 }
 

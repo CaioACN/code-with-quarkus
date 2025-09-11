@@ -2,10 +2,8 @@ package org.acme.loyalty.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Check;
 
 import java.time.LocalDateTime;
 
@@ -22,79 +20,80 @@ import java.time.LocalDateTime;
  * - Para metadados livres, usar metadataJson (TEXT) serializado em JSON pela aplicação.
  */
 @Entity
-@Table(name = "notificacao")
+@Table(name = "notificacao", schema = "loyalty")
+@Check(constraints = "canal IN ('EMAIL', 'PUSH', 'SMS', 'WEBHOOK') AND status IN ('AGENDADA', 'ENFILEIRADA', 'RETENTANDO', 'ENVIADA', 'FALHA', 'CANCELADA') AND tentativas >= 0 AND tipo IN ('ACUMULO', 'EXPIRACAO', 'RESGATE', 'SISTEMA', 'AJUSTE')")
 public class Notificacao extends PanacheEntity {
 
     // ===================== Relacionamentos (opcionais) =====================
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id")
+    @JoinColumn(name = "usuario_id", foreignKey = @ForeignKey(name = "fk_notificacao_usuario"))
     public Usuario usuario;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cartao_id")
+    @JoinColumn(name = "cartao_id", foreignKey = @ForeignKey(name = "fk_notificacao_cartao"))
     public Cartao cartao;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transacao_id")
+    @JoinColumn(name = "transacao_id", foreignKey = @ForeignKey(name = "fk_notificacao_transacao"))
     public Transacao transacao;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resgate_id")
+    @JoinColumn(name = "resgate_id", foreignKey = @ForeignKey(name = "fk_notificacao_resgate"))
     public Resgate resgate;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "movimento_id")
+    @JoinColumn(name = "movimento_id", foreignKey = @ForeignKey(name = "fk_notificacao_movimento"))
     public MovimentoPontos movimento;
 
     // ===================== Atributos principais =====================
 
-    @NotNull
+    @NotNull(message = "Canal é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(name = "canal", nullable = false, length = 16)
     public Canal canal; // EMAIL, PUSH, SMS, WEBHOOK
 
-    @NotNull
+    @NotNull(message = "Tipo é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 20)
     public Tipo tipo;   // ACUMULO, EXPIRACAO, RESGATE, SISTEMA, AJUSTE
 
-    @NotNull
+    @NotNull(message = "Status é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
     public Status status = Status.AGENDADA;
 
-    @Size(max = 200)
+    @Size(max = 200, message = "Título deve ter no máximo 200 caracteres")
     @Column(name = "titulo", length = 200)
     public String titulo;
 
-    @Size(max = 4000)
+    @Size(max = 4000, message = "Mensagem deve ter no máximo 4000 caracteres")
     @Column(name = "mensagem", length = 4000)
     public String mensagem;
 
     /** Destino do envio (e-mail/telefone/token/URL). Armazenar preferencialmente mascarado. */
-    @NotBlank
-    @Size(max = 320)
+    @NotBlank(message = "Destino é obrigatório")
+    @Size(max = 320, message = "Destino deve ter no máximo 320 caracteres")
     @Column(name = "destino", nullable = false, length = 320)
     public String destino;
 
     // ===================== Provedor / rastreio =====================
 
-    @Size(max = 60)
+    @Size(max = 60, message = "Provider deve ter no máximo 60 caracteres")
     @Column(name = "provider", length = 60)
     public String provider;
 
-    @Size(max = 120)
+    @Size(max = 120, message = "Provider Message ID deve ter no máximo 120 caracteres")
     @Column(name = "provider_message_id", length = 120)
     public String providerMessageId;
 
-    @Size(max = 180)
+    @Size(max = 180, message = "Erro mensagem deve ter no máximo 180 caracteres")
     @Column(name = "erro_mensagem", length = 180)
     public String erroMensagem;
 
     // ===================== Datas / Retentativas =====================
 
-    @NotNull
+    @NotNull(message = "Data de criação é obrigatória")
     @Column(name = "criado_em", nullable = false)
     public LocalDateTime criadoEm = LocalDateTime.now();
 
@@ -107,8 +106,8 @@ public class Notificacao extends PanacheEntity {
     public LocalDateTime enviadoEm;
 
     /** Controle de tentativas/retentativa. */
-    @NotNull
-    @Min(0)
+    @NotNull(message = "Tentativas é obrigatório")
+    @Min(value = 0, message = "Tentativas deve ser maior ou igual a 0")
     @Column(name = "tentativas", nullable = false)
     public Integer tentativas = 0;
 
@@ -120,15 +119,15 @@ public class Notificacao extends PanacheEntity {
 
     // ===================== Correlação / Multi-tenant / Template =====================
 
-    @Size(max = 120)
+    @Size(max = 120, message = "Correlation ID deve ter no máximo 120 caracteres")
     @Column(name = "correlation_id", length = 120)
     public String correlationId;
 
-    @Size(max = 60)
+    @Size(max = 60, message = "Tenant ID deve ter no máximo 60 caracteres")
     @Column(name = "tenant_id", length = 60)
     public String tenantId;
 
-    @Size(max = 120)
+    @Size(max = 120, message = "Template deve ter no máximo 120 caracteres")
     @Column(name = "template", length = 120)
     public String template;
 
@@ -207,6 +206,32 @@ public class Notificacao extends PanacheEntity {
         boolean retryOk  = (proximaTentativaEm == null || !ref.isBefore(proximaTentativaEm));
         return estadoOk && agendaOk && retryOk;
     }
+    
+    // ---- Normalização de dados ----
+    @PrePersist
+    @PreUpdate
+    protected void normalize() {
+        // Normalizar strings
+        if (titulo != null) titulo = titulo.trim();
+        if (mensagem != null) mensagem = mensagem.trim();
+        if (destino != null) destino = destino.trim();
+        if (provider != null) provider = provider.trim();
+        if (providerMessageId != null) providerMessageId = providerMessageId.trim();
+        if (erroMensagem != null) erroMensagem = erroMensagem.trim();
+        if (correlationId != null) correlationId = correlationId.trim();
+        if (tenantId != null) tenantId = tenantId.trim();
+        if (template != null) template = template.trim();
+        
+        // Definir data de criação se não foi definida
+        if (criadoEm == null) {
+            criadoEm = LocalDateTime.now();
+        }
+        
+        // Definir tentativas se não foi definido
+        if (tentativas == null) {
+            tentativas = 0;
+        }
+    }
 
     /** Retorna o destino mascarado (e-mail/telefone). */
     public String getDestinoMascarado() {
@@ -226,7 +251,37 @@ public class Notificacao extends PanacheEntity {
         return "***";
     }
 
-    // ===================== Enums =====================
+    // ===================== Métodos de validação =====================
+    
+    /**
+     * Valida se o canal é válido conforme DDL
+     */
+    public boolean temCanalValido() {
+        return canal != null;
+    }
+    
+    /**
+     * Valida se o tipo é válido conforme DDL
+     */
+    public boolean temTipoValido() {
+        return tipo != null;
+    }
+    
+    /**
+     * Valida se o status é válido conforme DDL
+     */
+    public boolean temStatusValido() {
+        return status != null;
+    }
+    
+    /**
+     * Valida se as tentativas são válidas conforme DDL
+     */
+    public boolean temTentativasValidas() {
+        return tentativas != null && tentativas >= 0;
+    }
+
+    // ===================== Enums (mantidos para compatibilidade) =====================
 
     public enum Canal {
         EMAIL, PUSH, SMS, WEBHOOK

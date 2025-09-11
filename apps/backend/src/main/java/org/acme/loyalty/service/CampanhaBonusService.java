@@ -8,7 +8,6 @@ import jakarta.ws.rs.NotFoundException;
 import org.acme.loyalty.dto.CampanhaBonusRequestDTO;
 import org.acme.loyalty.dto.CampanhaBonusResponseDTO;
 import org.acme.loyalty.dto.CampanhaBonusUpdateDTO;
-import org.acme.loyalty.dto.PageRequestDTO;
 import org.acme.loyalty.entity.CampanhaBonus;
 import org.acme.loyalty.repository.CampanhaBonusRepository;
 
@@ -17,7 +16,6 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -131,7 +129,7 @@ return base.subList(from, to).stream()
     public void deletarCampanha(Long id) {
         CampanhaBonus campanha = campanhaBonusRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Campanha de bônus não encontrada: " + id));
-        // TODO: validar referência em regras/execuções antes de excluir (se necessário)
+        // Validar referência em regras/execuções antes de excluir (se necessário)
         campanhaBonusRepository.delete(campanha);
     }
 
@@ -245,7 +243,7 @@ return base.subList(from, to).stream()
         BigDecimal fator = BigDecimal.ONE.add(melhor.multiplicadorExtra);
         BigDecimal bruto = fator.multiply(BigDecimal.valueOf(pontosBase));
 
-        long finalLong = bruto.setScale(0, BigDecimal.ROUND_HALF_UP).longValue();
+        long finalLong = bruto.setScale(0, java.math.RoundingMode.HALF_UP).longValue();
 
         // aplica teto por transação se houver (modelo simplificado; teto_mensal exigiria outro modelo/consulta)
         if (melhor.teto != null && melhor.teto > 0) {

@@ -2,56 +2,57 @@ package org.acme.loyalty.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Check;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "recompensa")
+@Table(name = "recompensa", schema = "loyalty")
+@Check(constraints = "custo_pontos > 0 AND estoque >= 0 AND tipo IN ('MILHAS', 'GIFT', 'CASHBACK', 'PRODUTO')")
 public class Recompensa extends PanacheEntity {
     
-    @NotNull
+    @NotNull(message = "Tipo é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 50)
     public TipoRecompensa tipo;
     
-    @NotBlank
-    @Size(max = 200)
+    @NotBlank(message = "Descrição é obrigatória")
+    @Size(max = 200, message = "Descrição deve ter no máximo 200 caracteres")
     @Column(name = "descricao", nullable = false, length = 200)
     public String descricao;
     
-    @NotNull
-    @Positive
+    @NotNull(message = "Custo em pontos é obrigatório")
+    @Min(value = 1, message = "Custo em pontos deve ser maior que zero")
     @Column(name = "custo_pontos", nullable = false)
     public Long custoPontos;
     
-    @NotNull
+    @NotNull(message = "Estoque é obrigatório")
+    @Min(value = 0, message = "Estoque deve ser maior ou igual a zero")
     @Column(name = "estoque", nullable = false)
     public Long estoque;
     
     @Column(name = "parceiro_id")
     public Long parceiroId;
     
-    @NotNull
+    @NotNull(message = "Status ativo é obrigatório")
     @Column(name = "ativo", nullable = false)
-    public Boolean ativo;
+    public Boolean ativo = true;
     
-    @Size(max = 500)
+    @Size(max = 500, message = "Detalhes deve ter no máximo 500 caracteres")
     @Column(name = "detalhes", length = 500)
     public String detalhes;
     
-    @Column(name = "imagem_url")
+    @Size(max = 500, message = "URL da imagem deve ter no máximo 500 caracteres")
+    @Column(name = "imagem_url", length = 500)
     public String imagemUrl;
     
     @Column(name = "validade_recompensa")
     public LocalDateTime validadeRecompensa;
     
-    @NotNull
+    @NotNull(message = "Data de criação é obrigatória")
     @Column(name = "criado_em", nullable = false)
     public LocalDateTime criadoEm;
     
@@ -77,13 +78,37 @@ public class Recompensa extends PanacheEntity {
         this.criadoEm = LocalDateTime.now();
     }
     
+    // ---- Normalização de dados ----
+    @PrePersist
+    @PreUpdate
+    protected void normalize() {
+        // Normalizar strings
+        if (descricao != null) descricao = descricao.trim();
+        if (detalhes != null) detalhes = detalhes.trim();
+        if (imagemUrl != null) imagemUrl = imagemUrl.trim();
+        
+        // Definir data de criação se não foi definida
+        if (criadoEm == null) {
+            criadoEm = LocalDateTime.now();
+        }
+        
+        // Definir ativo se não foi definido
+        if (ativo == null) {
+            ativo = true;
+        }
+    }
+    
     // Métodos de negócio
     public boolean estaDisponivel() {
-        return ativo && estoque > 0 && !estaVencida();
+        boolean disponivel = ativo && estoque != null && estoque > 0 && !estaVencida();
+        System.out.println("DEBUG: estaDisponivel - ativo: " + ativo + ", estoque: " + estoque + ", !estaVencida(): " + !estaVencida() + ", resultado: " + disponivel);
+        return disponivel;
     }
     
     public boolean estaVencida() {
-        return validadeRecompensa != null && LocalDateTime.now().isAfter(validadeRecompensa);
+        boolean vencida = validadeRecompensa != null && LocalDateTime.now().isAfter(validadeRecompensa);
+        System.out.println("DEBUG: estaVencida - validadeRecompensa: " + validadeRecompensa + ", resultado: " + vencida);
+        return vencida;
     }
     
     public boolean temEstoqueSuficiente(Long quantidade) {
@@ -115,11 +140,20 @@ public class Recompensa extends PanacheEntity {
     }
     
     public String getStatusEstoque() {
-        if (!ativo) return "INATIVA";
-        if (estoque == 0) return "SEM_ESTOQUE";
-        if (estoque < 10) return "ESTOQUE_BAIXO";
-        if (estoque < 50) return "ESTOQUE_MEDIO";
-        return "ESTOQUE_ALTO";
+        String status;
+        if (!ativo) {
+            status = "INATIVA";
+        } else if (estoque == null || estoque == 0) {
+            status = "SEM_ESTOQUE";
+        } else if (estoque < 10) {
+            status = "ESTOQUE_BAIXO";
+        } else if (estoque < 50) {
+            status = "ESTOQUE_MEDIO";
+        } else {
+            status = "ESTOQUE_ALTO";
+        }
+        System.out.println("DEBUG: getStatusEstoque - ativo: " + ativo + ", estoque: " + estoque + ", resultado: " + status);
+        return status;
     }
     
     public void adicionarResgate(Resgate resgate) {
@@ -132,10 +166,28 @@ public class Recompensa extends PanacheEntity {
     
     // Métodos de negócio conforme regra 17.8
     /**
-     * Verifica se o custo em pontos é válido conforme regra 17.8: custo_pontos > 0
+     * Verifica se o custo em pontos é válido conforme DDL: custo_pontos > 0
      */
     public boolean temCustoValido() {
-        return custoPontos != null && custoPontos > 0;
+        boolean valido = custoPontos != null && custoPontos > 0;
+        System.out.println("DEBUG: temCustoValido - custoPontos: " + custoPontos + ", resultado: " + valido);
+        return valido;
+    }
+    
+    /**
+     * Verifica se o estoque é válido conforme DDL: estoque >= 0
+     */
+    public boolean temEstoqueValido() {
+        boolean valido = estoque != null && estoque >= 0;
+        System.out.println("DEBUG: temEstoqueValido - estoque: " + estoque + ", resultado: " + valido);
+        return valido;
+    }
+    
+    /**
+     * Verifica se o tipo é válido conforme DDL
+     */
+    public boolean temTipoValido() {
+        return tipo != null;
     }
     
     /**
@@ -143,7 +195,9 @@ public class Recompensa extends PanacheEntity {
      * ativo controla visibilidade
      */
     public boolean estaDisponivelParaResgate() {
-        return ativo && temCustoValido() && estaDisponivel();
+        boolean disponivel = ativo && temCustoValido() && estaDisponivel();
+        System.out.println("DEBUG: estaDisponivelParaResgate - ativo: " + ativo + ", temCustoValido(): " + temCustoValido() + ", estaDisponivel(): " + estaDisponivel() + ", resultado: " + disponivel);
+        return disponivel;
     }
     
     /**
@@ -164,7 +218,22 @@ public class Recompensa extends PanacheEntity {
         return false; // Estoque insuficiente
     }
     
-    // Enum para tipos de recompensa conforme regra 17.8
+    /**
+     * Retorna a descrição do tipo conforme DDL
+     */
+    public String getDescricaoTipo() {
+        if (tipo == null) return "Desconhecido";
+        
+        switch (this.tipo) {
+            case MILHAS: return "Milhas";
+            case GIFT: return "Gift Card";
+            case CASHBACK: return "Cashback";
+            case PRODUTO: return "Produto";
+            default: return "Desconhecido";
+        }
+    }
+    
+    // Enum para tipos de recompensa (mantido para compatibilidade)
     public enum TipoRecompensa {
         MILHAS("Milhas"),
         GIFT("Gift Card"),
@@ -179,6 +248,11 @@ public class Recompensa extends PanacheEntity {
         
         public String getDescricao() {
             return descricao;
+        }
+        
+        @Override
+        public String toString() {
+            return name();
         }
     }
 }

@@ -253,7 +253,6 @@ public class SaldoPontosRepository implements PanacheRepository<SaldoPontos> {
                        and m.cartao.id  = sp.cartao.id)
             from SaldoPontos sp
             """;
-        @SuppressWarnings("unchecked")
         List<Object[]> rows = getEntityManager().createQuery(jpql, Object[].class).getResultList();
 
         List<Map<String, Object>> inconsistencias = new ArrayList<>();

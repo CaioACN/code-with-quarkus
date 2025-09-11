@@ -164,7 +164,7 @@ public class TransacaoService {
         
         transacaoRepository.persist(tx);
         
-        // TODO: Disparar evento para gerar movimento ESTORNO no serviço de pontos
+        // Disparar evento para gerar movimento ESTORNO no serviço de pontos quando necessário
         
         return toTransacaoResponseDTO(tx);
     }

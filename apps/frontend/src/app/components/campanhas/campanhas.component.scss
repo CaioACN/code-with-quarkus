@@ -1,0 +1,458 @@
+.campanhas-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  
+  h2 {
+    margin: 0;
+    color: #333;
+    font-size: 28px;
+    font-weight: 600;
+  }
+}
+
+// Alertas
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  &.alert-error {
+    background-color: #fee;
+    border: 1px solid #fcc;
+    color: #c33;
+  }
+  
+  &.alert-success {
+    background-color: #efe;
+    border: 1px solid #cfc;
+    color: #3c3;
+  }
+  
+  .btn-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// Filtros
+.filtros {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  align-items: end;
+  
+  .filtro-group {
+    display: flex;
+    flex-direction: column;
+    
+    label {
+      font-weight: 500;
+      margin-bottom: 5px;
+      color: #555;
+    }
+    
+    input, select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      
+      &:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+      }
+    }
+  }
+  
+  .filtro-actions {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+  }
+}
+
+// Lista de Campanhas
+.campanhas-list {
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    
+    .icon-spinner {
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    
+    .icon-campaign {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    p {
+      margin: 0;
+      font-size: 16px;
+    }
+  }
+}
+
+.campanhas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.campanha-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .campanha-header {
+    background: #f8f9fa;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .campanha-actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+  
+  .campanha-content {
+    padding: 20px;
+    
+    .campanha-info {
+      margin-bottom: 16px;
+      
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        
+        label {
+          font-weight: 500;
+          color: #666;
+        }
+        
+        .multiplicador {
+          font-weight: 600;
+          color: #28a745;
+        }
+      }
+    }
+    
+    .campanha-dates {
+      margin-bottom: 16px;
+      
+      .date-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        
+        label {
+          font-weight: 500;
+          color: #666;
+        }
+      }
+    }
+    
+    .campanha-status {
+      text-align: center;
+      
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        
+        &.status-vigente {
+          background-color: #d4edda;
+          color: #155724;
+        }
+        
+        &.status-expirada {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+        
+        &.status-proxima-expiracao {
+          background-color: #fff3cd;
+          color: #856404;
+        }
+        
+        &.status-aguardando {
+          background-color: #d1ecf1;
+          color: #0c5460;
+        }
+      }
+    }
+  }
+  
+  .campanha-footer {
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    text-align: right;
+  }
+}
+
+// Formulário
+.campanha-form {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  .form-header {
+    background: #f8f9fa;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+  }
+  
+  .form {
+    padding: 20px;
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+      
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      
+      label {
+        font-weight: 500;
+        margin-bottom: 5px;
+        color: #555;
+      }
+      
+      input, select, textarea {
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        
+        &:focus {
+          outline: none;
+          border-color: #007bff;
+          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        &.ng-invalid.ng-touched {
+          border-color: #dc3545;
+        }
+      }
+    }
+    
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+    }
+  }
+}
+
+// Botões
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &.btn-primary {
+    background-color: #007bff;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #0056b3;
+    }
+  }
+  
+  &.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #545b62;
+    }
+  }
+  
+  &.btn-success {
+    background-color: #28a745;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #1e7e34;
+    }
+  }
+  
+  &.btn-warning {
+    background-color: #ffc107;
+    color: #212529;
+    
+    &:hover:not(:disabled) {
+      background-color: #e0a800;
+    }
+  }
+  
+  &.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #c82333;
+    }
+  }
+  
+  &.btn-outline {
+    background-color: transparent;
+    color: #6c757d;
+    border: 1px solid #6c757d;
+    
+    &:hover:not(:disabled) {
+      background-color: #6c757d;
+      color: white;
+    }
+  }
+  
+  &.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+
+// Ícones (usando classes simples - você pode substituir por ícones reais)
+.icon-plus::before { content: "+"; }
+.icon-edit::before { content: "✏"; }
+.icon-delete::before { content: "🗑"; }
+.icon-save::before { content: "💾"; }
+.icon-close::before { content: "✕"; }
+.icon-search::before { content: "🔍"; }
+.icon-clear::before { content: "🗑"; }
+.icon-play::before { content: "▶"; }
+.icon-pause::before { content: "⏸"; }
+.icon-campaign::before { content: "📢"; }
+.icon-spinner::before { content: "⟳"; }
+
+// Animações
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// Responsividade
+@media (max-width: 768px) {
+  .campanhas-container {
+    padding: 15px;
+  }
+  
+  .header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+    
+    h2 {
+      text-align: center;
+    }
+  }
+  
+  .filtros {
+    grid-template-columns: 1fr;
+  }
+  
+  .campanhas-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .campanha-card .campanha-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    
+    .campanha-actions {
+      justify-content: center;
+    }
+  }
+}

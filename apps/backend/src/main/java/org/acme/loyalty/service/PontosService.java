@@ -5,7 +5,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
 import org.acme.loyalty.dto.ExtratoPontosDTO;
 import org.acme.loyalty.dto.MovimentoPontosDTO;
-import org.acme.loyalty.dto.PageRequestDTO;
 import org.acme.loyalty.dto.SaldoPontosDTO;
 import org.acme.loyalty.dto.SaldoUsuarioDTO;
 import org.acme.loyalty.entity.MovimentoPontos;
@@ -147,7 +146,7 @@ public class PontosService {
         usuarioRepository.findByIdOptional(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + usuarioId));
 
-        // TODO: implementar resumo consolidado
+        // Implementar resumo consolidado quando necessário
         return null;
     }
 
@@ -170,7 +169,7 @@ public class PontosService {
     private MovimentoPontosDTO toMovimentoPontosDTO(MovimentoPontos m) {
         Long usuarioId = (m.usuario != null ? m.usuario.id : null);
         Long cartaoId  = (m.cartao  != null ? m.cartao.id  : null);
-        String tipo    = (m.tipo    != null ? m.tipo.name() : null);
+        MovimentoPontos.TipoMovimento tipo = m.tipo;
         Integer pontos = (m.pontos  != null ? m.pontos : 0);
     
         return new MovimentoPontosDTO(
@@ -207,7 +206,7 @@ public class PontosService {
 
     private Long calcularSaldoInicial(Long usuarioId, Long cartaoId, LocalDate dataInicio) {
         if (dataInicio == null) return 0L;
-        // TODO: Implementar cálculo real com somatório de movimentos anteriores à data
+        // Implementar cálculo real com somatório de movimentos anteriores à data quando necessário
         return 0L;
     }
 

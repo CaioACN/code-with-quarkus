@@ -2,42 +2,42 @@ package org.acme.loyalty.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Check;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "resgate")
+@Table(name = "resgate", schema = "loyalty")
+@Check(constraints = "pontos_utilizados > 0 AND status IN ('PENDENTE', 'APROVADO', 'CONCLUIDO', 'NEGADO', 'CANCELADO')")
 public class Resgate extends PanacheEntity {
     
-    @NotNull
+    @NotNull(message = "Usuário é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @JoinColumn(name = "usuario_id", nullable = false, foreignKey = @ForeignKey(name = "fk_resgate_usuario"))
     public Usuario usuario;
     
-    @NotNull
+    @NotNull(message = "Cartão é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cartao_id", nullable = false)
+    @JoinColumn(name = "cartao_id", nullable = false, foreignKey = @ForeignKey(name = "fk_resgate_cartao"))
     public Cartao cartao;
     
-    @NotNull
+    @NotNull(message = "Recompensa é obrigatória")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recompensa_id", nullable = false)
+    @JoinColumn(name = "recompensa_id", nullable = false, foreignKey = @ForeignKey(name = "fk_resgate_recompensa"))
     public Recompensa recompensa;
     
-    @NotNull
-    @Positive
+    @NotNull(message = "Pontos utilizados é obrigatório")
+    @Min(value = 1, message = "Pontos utilizados deve ser maior que zero")
     @Column(name = "pontos_utilizados", nullable = false)
     public Long pontosUtilizados;
     
-    @NotNull
+    @NotNull(message = "Status é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     public StatusResgate status;
     
-    @NotNull
+    @NotNull(message = "Data de criação é obrigatória")
     @Column(name = "criado_em", nullable = false)
     public LocalDateTime criadoEm;
     
@@ -50,18 +50,20 @@ public class Resgate extends PanacheEntity {
     @Column(name = "negado_em")
     public LocalDateTime negadoEm;
     
-    @Size(max = 500)
+    @Size(max = 500, message = "Observação deve ter no máximo 500 caracteres")
     @Column(name = "observacao", length = 500)
     public String observacao;
     
-    @Size(max = 100)
+    @Size(max = 100, message = "Motivo da negação deve ter no máximo 100 caracteres")
     @Column(name = "motivo_negacao", length = 100)
     public String motivoNegacao;
     
-    @Column(name = "codigo_rastreio")
+    @Size(max = 100, message = "Código de rastreio deve ter no máximo 100 caracteres")
+    @Column(name = "codigo_rastreio", length = 100)
     public String codigoRastreio;
     
-    @Column(name = "parceiro_processador")
+    @Size(max = 100, message = "Parceiro processador deve ter no máximo 100 caracteres")
+    @Column(name = "parceiro_processador", length = 100)
     public String parceiroProcessador;
     
     // Construtores
@@ -74,6 +76,27 @@ public class Resgate extends PanacheEntity {
         this.pontosUtilizados = pontosUtilizados;
         this.status = StatusResgate.PENDENTE;
         this.criadoEm = LocalDateTime.now();
+    }
+    
+    // ---- Normalização de dados ----
+    @PrePersist
+    @PreUpdate
+    protected void normalize() {
+        // Normalizar strings
+        if (observacao != null) observacao = observacao.trim();
+        if (motivoNegacao != null) motivoNegacao = motivoNegacao.trim();
+        if (codigoRastreio != null) codigoRastreio = codigoRastreio.trim();
+        if (parceiroProcessador != null) parceiroProcessador = parceiroProcessador.trim();
+        
+        // Definir data de criação se não foi definida
+        if (criadoEm == null) {
+            criadoEm = LocalDateTime.now();
+        }
+        
+        // Definir status padrão se não foi definido
+        if (status == null) {
+            status = StatusResgate.PENDENTE;
+        }
     }
     
     // Métodos de negócio conforme regra 17.9
@@ -143,6 +166,8 @@ public class Resgate extends PanacheEntity {
     }
     
     public String getStatusDescricao() {
+        if (status == null) return "Status Desconhecido";
+        
         switch (this.status) {
             case PENDENTE: return "Aguardando Aprovação";
             case APROVADO: return "Aprovado";
@@ -151,6 +176,20 @@ public class Resgate extends PanacheEntity {
             case CANCELADO: return "Cancelado";
             default: return "Status Desconhecido";
         }
+    }
+    
+    /**
+     * Verifica se o status é válido conforme DDL
+     */
+    public boolean temStatusValido() {
+        return status != null;
+    }
+    
+    /**
+     * Verifica se os pontos utilizados são válidos conforme DDL: pontos_utilizados > 0
+     */
+    public boolean temPontosValidos() {
+        return pontosUtilizados != null && pontosUtilizados > 0;
     }
     
     public Long getTempoProcessamento() {
@@ -165,7 +204,7 @@ public class Resgate extends PanacheEntity {
         return java.time.Duration.between(criadoEm, fim).toHours();
     }
     
-    // Enum para status do resgate
+    // Enum para status do resgate conforme DDL
     public enum StatusResgate {
         PENDENTE,
         APROVADO,

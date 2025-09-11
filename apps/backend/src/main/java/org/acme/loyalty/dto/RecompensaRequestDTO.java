@@ -2,6 +2,7 @@ package org.acme.loyalty.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import org.acme.loyalty.entity.Recompensa;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -18,7 +19,6 @@ public class RecompensaRequestDTO {
 
     // ===== Campos obrigatórios =====
 
-    @NotNull
     @Schema(
         description = "Tipo da recompensa",
         required = true,
@@ -27,20 +27,15 @@ public class RecompensaRequestDTO {
             "MILHAS","GIFT","CASHBACK","PRODUTO"
         }
     )
-    public Recompensa.TipoRecompensa tipo;
+    @JsonProperty("tipo")
+    public String tipo;
 
-    @NotBlank
-    @Size(max = 200)
     @Schema(description = "Descrição/título da recompensa", example = "Fone Bluetooth XYZ")
     public String descricao;
 
-    @NotNull
-    @Positive
     @Schema(description = "Custo em pontos para resgatar esta recompensa", example = "2500")
     public Long custoPontos;
 
-    @NotNull
-    @PositiveOrZero
     @Schema(description = "Estoque inicial disponível", example = "100")
     public Long estoque;
 
@@ -49,28 +44,17 @@ public class RecompensaRequestDTO {
     @Schema(description = "Identificador do parceiro (se houver integração de fulfillment)", example = "12345")
     public Long parceiroId;
 
-    @Size(max = 500)
     @Schema(description = "Detalhes adicionais/observações da recompensa")
     public String detalhes;
 
-    @Pattern(regexp = "^(https?://).*$", message = "imagemUrl deve iniciar com http:// ou https://")
     @Schema(description = "URL da imagem ilustrativa", example = "https://cdn.exemplo.com/imgs/reward-123.png")
     public String imagemUrl;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    @Schema(description = "Validade da recompensa (após essa data, fica indisponível)", example = "2025-12-31T23:59:59")
-    public LocalDateTime validadeRecompensa;
+    @Schema(description = "Validade da recompensa (após essa data, fica indisponível)", example = "2025-12-31")
+    public String validadeRecompensa;
 
     @Schema(description = "Ativa no catálogo?", example = "true", defaultValue = "true")
     public Boolean ativo = Boolean.TRUE;
-
-    // ===== Regras simples de validação =====
-
-    @AssertTrue(message = "validadeRecompensa deve ser no futuro (ou vazio)")
-    public boolean isValidadeFutura() {
-        if (validadeRecompensa == null) return true;
-        return validadeRecompensa.isAfter(LocalDateTime.now());
-    }
 
     // ===== Conveniências =====
 
@@ -82,8 +66,16 @@ public class RecompensaRequestDTO {
     /** Converte este request para uma entidade {@link Recompensa}. */
     public Recompensa toEntity() {
         ensureDefaults();
+        Recompensa.TipoRecompensa tipoEnum = Recompensa.TipoRecompensa.PRODUTO;
+        if (this.tipo != null && !this.tipo.trim().isEmpty()) {
+            try {
+                tipoEnum = Recompensa.TipoRecompensa.valueOf(this.tipo.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Usar valor padrão se inválido
+            }
+        }
         Recompensa r = new Recompensa(
-                this.tipo,
+                tipoEnum,
                 this.descricao,
                 this.custoPontos,
                 this.estoque,
@@ -91,7 +83,20 @@ public class RecompensaRequestDTO {
                 this.detalhes
         );
         r.imagemUrl = this.imagemUrl;
-        r.validadeRecompensa = this.validadeRecompensa;
+        
+        // Converter string para LocalDateTime se não for null
+        if (this.validadeRecompensa != null && !this.validadeRecompensa.trim().isEmpty()) {
+            try {
+                r.validadeRecompensa = LocalDateTime.parse(this.validadeRecompensa + "T23:59:59");
+            } catch (Exception e) {
+                // Se falhar, usar data padrão (1 ano no futuro)
+                r.validadeRecompensa = LocalDateTime.now().plusYears(1);
+            }
+        } else {
+            // Data padrão: 1 ano no futuro
+            r.validadeRecompensa = LocalDateTime.now().plusYears(1);
+        }
+        
         r.ativo = this.ativo;
         return r;
     }

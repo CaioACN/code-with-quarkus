@@ -2,6 +2,7 @@ package org.acme.loyalty.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import org.acme.loyalty.dto.RecompensaRequestDTO;
@@ -20,33 +21,82 @@ public class RecompensaService {
 
     @Inject
     RecompensaRepository recompensaRepository;
+    
+    @Inject
+    EntityManager entityManager;
 
     // ===================== CRUD =====================
 
     @Transactional
     public RecompensaResponseDTO criarRecompensa(RecompensaRequestDTO req) {
-        validarRecompensa(req);
+        // Validação básica simplificada
+        if (req == null) {
+            throw new IllegalArgumentException("Request não pode ser nulo");
+        }
+        if (req.descricao == null || req.descricao.trim().isEmpty()) {
+            throw new IllegalArgumentException("Descrição é obrigatória");
+        }
+        if (req.custoPontos == null || req.custoPontos <= 0) {
+            throw new IllegalArgumentException("Custo em pontos deve ser maior que zero");
+        }
+        if (req.estoque == null || req.estoque < 0) {
+            throw new IllegalArgumentException("Estoque deve ser maior ou igual a zero");
+        }
+        // Validação e conversão do tipo
+        Recompensa.TipoRecompensa tipoEnum;
+        if (req.tipo == null || req.tipo.trim().isEmpty()) {
+            tipoEnum = Recompensa.TipoRecompensa.PRODUTO; // Valor padrão
+        } else {
+            try {
+                tipoEnum = Recompensa.TipoRecompensa.valueOf(req.tipo.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Tipo de recompensa inválido: " + req.tipo + ". Valores válidos: MILHAS, GIFT, CASHBACK, PRODUTO");
+            }
+        }
 
         // unicidade por descrição (case-insensitive)
         if (recompensaRepository.existsByDescricaoIgnoringId(req.descricao, null)) {
             throw new IllegalArgumentException("Já existe recompensa com a mesma descrição");
         }
 
+        // Criar entidade com todos os campos
         Recompensa r = new Recompensa();
-        r.tipo = req.tipo; // enum Recompensa.TipoRecompensa
+        r.tipo = tipoEnum;
         r.descricao = req.descricao;
         r.custoPontos = req.custoPontos;
         r.estoque = req.estoque;
         r.parceiroId = req.parceiroId;
         r.detalhes = req.detalhes;
         r.imagemUrl = req.imagemUrl;
-        r.validadeRecompensa = req.validadeRecompensa;
+        // Converter String para LocalDateTime se necessário
+        if (req.validadeRecompensa != null && !req.validadeRecompensa.trim().isEmpty()) {
+            try {
+                // Tentar primeiro como timestamp completo
+                if (req.validadeRecompensa.contains("T")) {
+                    r.validadeRecompensa = LocalDateTime.parse(req.validadeRecompensa);
+                } else {
+                    // Se for apenas data, adicionar horário
+                    r.validadeRecompensa = LocalDateTime.parse(req.validadeRecompensa + "T23:59:59");
+                }
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Formato de data inválido para validadeRecompensa: " + req.validadeRecompensa);
+            }
+        } else {
+            r.validadeRecompensa = null;
+        }
         r.ativo = Boolean.TRUE;
         r.criadoEm = LocalDateTime.now();
         r.atualizadoEm = r.criadoEm;
 
-        recompensaRepository.persist(r);
-        return toDTO(r);
+        // Persistir usando EntityManager diretamente
+        entityManager.persist(r);
+        entityManager.flush();
+        entityManager.refresh(r);
+        
+        // Usar o método factory do DTO para garantir que todos os campos derivados sejam preenchidos
+        RecompensaResponseDTO dto = RecompensaResponseDTO.fromEntity(r);
+        
+        return dto;
     }
 
     public RecompensaResponseDTO buscarRecompensaPorId(Long id) {
@@ -229,22 +279,21 @@ public class RecompensaService {
     }
 
     private RecompensaResponseDTO toDTO(Recompensa r) {
-        RecompensaResponseDTO dto = new RecompensaResponseDTO();
-        dto.id = r.id;
-        dto.tipo = r.tipo;
-        dto.descricao = r.descricao;
-        dto.custoPontos = r.custoPontos;
-        dto.estoque = r.estoque;
-        dto.parceiroId = r.parceiroId;
-        dto.ativo = r.ativo;
-        dto.detalhes = r.detalhes;
-        dto.imagemUrl = r.imagemUrl;
-        dto.validadeRecompensa = r.validadeRecompensa;
-        dto.criadoEm = r.criadoEm;
-        dto.atualizadoEm = r.atualizadoEm;
-        if (r.getStatusEstoque() != null) {
-            dto.statusEstoque = r.getStatusEstoque();
-        }
+        System.out.println("DEBUG: toDTO - Entidade recebida: " + r);
+        System.out.println("DEBUG: toDTO - ID: " + r.id);
+        System.out.println("DEBUG: toDTO - Tipo: " + r.tipo);
+        System.out.println("DEBUG: toDTO - Descrição: " + r.descricao);
+        
+        // Usar o método factory do DTO para garantir que todos os campos derivados sejam preenchidos
+        RecompensaResponseDTO dto = RecompensaResponseDTO.fromEntity(r);
+        
+        System.out.println("DEBUG: toDTO - DTO criado: " + dto);
+        System.out.println("DEBUG: toDTO - DTO ID: " + dto.id);
+        System.out.println("DEBUG: toDTO - DTO Tipo: " + dto.tipo);
+        System.out.println("DEBUG: toDTO - DTO Descrição: " + dto.descricao);
+        System.out.println("DEBUG: toDTO - DTO disponivel: " + dto.disponivel);
+        System.out.println("DEBUG: toDTO - DTO statusEstoque: " + dto.statusEstoque);
+        
         return dto;
     }
 

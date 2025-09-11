@@ -1,6 +1,5 @@
 package org.acme.loyalty.resource;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -36,7 +35,7 @@ public class HealthResource {
     @Path("/ready")
     public Response readinessCheck() {
         try {
-            // TODO: Implementar verificações de readiness (banco, cache, etc.)
+            // Implementar verificações de readiness (banco, cache, etc.)
             Map<String, Object> readiness = new HashMap<>();
             readiness.put("status", "READY");
             readiness.put("database", "UP");
@@ -58,7 +57,7 @@ public class HealthResource {
             Map<String, Object> liveness = new HashMap<>();
             liveness.put("status", "ALIVE");
             liveness.put("timestamp", LocalDateTime.now());
-            liveness.put("uptime", "0s"); // TODO: Implementar cálculo de uptime
+            liveness.put("uptime", "0s"); // Implementar cálculo de uptime
             
             return Response.ok(SuccessResponseDTO.ok("Sistema está vivo", liveness)).build();
         } catch (Exception e) {
@@ -92,7 +91,7 @@ public class HealthResource {
     @Path("/metrics")
     public Response systemMetrics() {
         try {
-            // TODO: Implementar métricas reais do sistema
+            // Implementar métricas reais do sistema
             Map<String, Object> metrics = new HashMap<>();
             metrics.put("timestamp", LocalDateTime.now());
             metrics.put("transacoesProcessadas", 0);

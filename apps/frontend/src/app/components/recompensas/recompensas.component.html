@@ -1,0 +1,186 @@
+<div class="recompensas-container">
+  <div class="header">
+    <h1>Catálogo de Recompensas</h1>
+    <button class="btn btn-primary" type="button" (click)="toggleForm()" [disabled]="loading">
+      {{ showForm ? 'Cancelar' : 'Nova Recompensa' }}
+    </button>
+  </div>
+
+
+  <!-- Formulário de Nova Recompensa -->
+  <div class="form-container" *ngIf="showForm">
+    <h2>Nova Recompensa</h2>
+
+    <form #recompensaForm="ngForm" novalidate autocomplete="off">
+      <div class="form-group">
+        <label for="tipo">Tipo:</label>
+        <select id="tipo" name="tipo" [(ngModel)]="novaRecompensa.tipo" required>
+          <option *ngFor="let tipo of tiposRecompensa" [value]="tipo.value">
+            {{ tipo.label }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="descricao">Descrição:</label>
+        <input
+          type="text"
+          id="descricao"
+          name="descricao"
+          [(ngModel)]="novaRecompensa.descricao"
+          required
+          placeholder="Ex: Vale Presente R$ 50"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="custoPontos">Custo em Pontos:</label>
+        <input
+          type="number"
+          id="custoPontos"
+          name="custoPontos"
+          [(ngModel)]="novaRecompensa.custoPontos"
+          required
+          min="1"
+          step="1"
+          inputmode="numeric"
+          placeholder="Ex: 1000"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="estoque">Estoque (opcional):</label>
+        <input
+          type="number"
+          id="estoque"
+          name="estoque"
+          [(ngModel)]="novaRecompensa.estoque"
+          min="0"
+          step="1"
+          inputmode="numeric"
+          placeholder="Deixe vazio para ilimitado"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="parceiroId">ID do Parceiro (opcional):</label>
+        <input
+          type="number"
+          id="parceiroId"
+          name="parceiroId"
+          [(ngModel)]="novaRecompensa.parceiroId"
+          min="1"
+          step="1"
+          inputmode="numeric"
+          placeholder="Ex: 123"
+        />
+      </div>
+
+      <div class="form-group checkbox-group">
+        <label>
+          <input type="checkbox" name="ativo" [(ngModel)]="novaRecompensa.ativo" />
+          Ativo
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <div class="button-container">
+          <button
+            type="button"
+            class="btn btn-success"
+            (click)="criarRecompensa(); onSubmitClick($event)"
+            [disabled]="creating"
+            [attr.aria-disabled]="(creating || recompensaForm.invalid) ? 'true' : null"
+            [attr.aria-busy]="creating ? 'true' : null"
+          >
+            <span *ngIf="creating" class="spinner"></span>
+            {{ creating ? 'Criando...' : 'Criar Recompensa' }}
+          </button>
+          
+          <!-- Popup de Sucesso posicionado abaixo do botão -->
+          <div class="success-popup" *ngIf="success" [@fadeInOut] style="position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 10px; background: #28a745; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; white-space: nowrap; min-width: 200px; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="background: rgba(255,255,255,0.2); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">✓</span>
+              <span style="font-weight: 600;">{{ success }}</span>
+            </div>
+            <!-- Seta apontando para cima -->
+            <div style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); border: 8px solid transparent; border-bottom-color: #28a745;"></div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="resetarFormulario()"
+          [disabled]="creating"
+        >
+          Limpar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Mensagem de Erro -->
+  <div class="error-message" *ngIf="error">
+    <p>{{ error }}</p>
+  </div>
+
+
+  <!-- Loading -->
+  <div class="loading" *ngIf="loading && !showForm">
+    <p>Carregando recompensas...</p>
+  </div>
+
+  <!-- Lista de Recompensas -->
+  <div class="recompensas-grid" *ngIf="!loading || showForm">
+    <div class="recompensa-card" *ngFor="let recompensa of recompensas">
+      <div class="card-header">
+        <h3>{{ recompensa.descricao }}</h3>
+        <span
+          class="tipo-badge"
+          [ngClass]="['tipo-' + (recompensa.tipo?.toLowerCase?.() || recompensa.tipo)]"
+        >
+          {{ formatarTipo(recompensa.tipo) }}
+        </span>
+      </div>
+
+      <div class="card-body">
+        <div class="info-item">
+          <span class="label">Custo:</span>
+          <span class="value pontos">{{ recompensa.custoPontos | number }} pontos</span>
+        </div>
+
+        <div class="info-item">
+          <span class="label">Estoque:</span>
+          <span class="value">{{ formatarEstoque(recompensa.estoque) }}</span>
+        </div>
+
+        <div class="info-item" *ngIf="recompensa.parceiroId">
+          <span class="label">Parceiro:</span>
+          <span class="value">ID {{ recompensa.parceiroId }}</span>
+        </div>
+
+        <div class="info-item">
+          <span class="label">Status:</span>
+          <span class="value" [class]="recompensa.ativo ? 'ativo' : 'inativo'">
+            {{ recompensa.ativo ? 'Ativo' : 'Inativo' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <button class="btn btn-outline-primary" [disabled]="!recompensa.ativo" (click)="resgatar(recompensa)">
+          Resgatar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div class="empty-state" *ngIf="recompensas.length === 0 && !loading">
+    <p>Nenhuma recompensa disponível no momento.</p>
+    <button class="btn btn-primary" type="button" (click)="toggleForm()">
+      Criar Primeira Recompensa
+    </button>
+  </div>
+</div>

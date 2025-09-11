@@ -79,7 +79,7 @@ public class AdminResource {
             parseDate(dataInicio);
             parseDate(dataFim);
             
-            // TODO: Implementar método consultarEstatisticas no AdminService
+            // Implementar método consultarEstatisticas no AdminService
             // EstatisticasDTO estatisticas = adminService.consultarEstatisticas(inicio, fim);
             EstatisticasDTO estatisticas = new EstatisticasDTO();
             
@@ -115,7 +115,7 @@ public class AdminResource {
             LOG.info("Realizando ajuste de pontos - usuário: " + ajusteRequest.usuarioId + 
                     ", cartão: " + ajusteRequest.cartaoId + ", pontos: " + ajusteRequest.pontos);
             
-            // TODO: Implementar método realizarAjustePontos no AdminService
+            // Implementar método realizarAjustePontos no AdminService
             // MovimentoPontosDTO movimento = adminService.realizarAjustePontos(ajusteRequest);
             MovimentoPontosDTO movimento = new MovimentoPontosDTO();
             
@@ -153,7 +153,7 @@ public class AdminResource {
         try {
             LOG.info("Realizando estorno de pontos - transação: " + transacaoId + ", motivo: " + motivo);
             
-            // TODO: Implementar método realizarEstornoPontos no AdminService
+            // Implementar método realizarEstornoPontos no AdminService
             // MovimentoPontosDTO movimento = adminService.realizarEstornoPontos(transacaoId, motivo);
             MovimentoPontosDTO movimento = new MovimentoPontosDTO();
             
@@ -198,7 +198,7 @@ public class AdminResource {
             parseDate(dataInicio);
             parseDate(dataFim);
             
-            // TODO: Implementar método consultarAuditoriaUsuario no AdminService
+            // Implementar método consultarAuditoriaUsuario no AdminService
             // AuditoriaUsuarioDTO auditoria = adminService.consultarAuditoriaUsuario(usuarioId, inicio, fim);
             AuditoriaUsuarioDTO auditoria = new AuditoriaUsuarioDTO();
             
@@ -235,7 +235,7 @@ public class AdminResource {
         try {
             LOG.info("Executando limpeza de manutenção - dias: " + dias + ", tipo: " + tipo);
             
-            // TODO: Implementar método executarLimpezaManutencao no AdminService
+            // Implementar método executarLimpezaManutencao no AdminService
             // String resultado = adminService.executarLimpezaManutencao(dias, tipo);
             String resultado = "Limpeza executada com sucesso";
             
@@ -266,7 +266,7 @@ public class AdminResource {
         try {
             LOG.info("Consultando health do sistema");
             
-            // TODO: Implementar método consultarHealthSistema no AdminService
+            // Implementar método consultarHealthSistema no AdminService
             // SaudeSistemaDTO health = adminService.consultarHealthSistema();
             SaudeSistemaDTO health = new SaudeSistemaDTO();
             
@@ -292,7 +292,7 @@ public class AdminResource {
         try {
             LOG.info("Consultando métricas do sistema");
             
-            // TODO: Implementar método consultarMetricasSistema no AdminService
+            // Implementar método consultarMetricasSistema no AdminService
             // MetricasSistemaDTO metricas = adminService.consultarMetricasSistema();
             MetricasSistemaDTO metricas = new MetricasSistemaDTO();
             

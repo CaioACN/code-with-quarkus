@@ -185,7 +185,6 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
         q.setParameter("ini", inicio);
         q.setParameter("fim", fim);
         q.setMaxResults(Math.max(limit, 1));
-        @SuppressWarnings("unchecked")
         List<Object[]> rows = q.getResultList();
         return rows.stream()
                 .map(r -> Map.of("mcc", r[0], "total", ((Number) r[1]).longValue()))
@@ -205,7 +204,6 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
         q.setParameter("ini", inicio);
         q.setParameter("fim", fim);
         q.setMaxResults(Math.max(limit, 1));
-        @SuppressWarnings("unchecked")
         List<Object[]> rows = q.getResultList();
         return rows.stream()
                 .map(r -> Map.of("categoria", r[0], "total", ((Number) r[1]).longValue()))

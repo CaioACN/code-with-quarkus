@@ -4,10 +4,13 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.acme.loyalty.dto.ErrorResponseDTO;
+import org.acme.loyalty.dto.PageResponseDTO;
 import org.acme.loyalty.dto.ResgateRequestDTO;
-import org.acme.loyalty.dto.ResgateDTO;
+import org.acme.loyalty.dto.ResgateResponseDTO;
 import org.acme.loyalty.dto.SuccessResponseDTO;
 import org.acme.loyalty.dto.ErrorResponseDTO;
+import org.acme.loyalty.service.ResgateService;
 
 import java.util.List;
 
@@ -16,11 +19,13 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ResgateResource {
 
+    @Inject
+    ResgateService resgateService;
+
     @POST
     public Response solicitarResgate(ResgateRequestDTO request) {
         try {
-            // TODO: Implementar serviço de resgate
-            ResgateDTO resgate = new ResgateDTO();
+            ResgateResponseDTO resgate = resgateService.solicitarResgate(request);
             
             return Response.status(Response.Status.CREATED)
                     .entity(SuccessResponseDTO.created(resgate))
@@ -43,8 +48,7 @@ public class ResgateResource {
             @QueryParam("tamanho") @DefaultValue("20") Integer tamanho) {
         
         try {
-            // TODO: Implementar serviço de listagem
-            List<ResgateDTO> resgates = List.of();
+            List<ResgateResponseDTO> resgates = resgateService.listarResgates(status, usuarioId, cartaoId, null, dataInicio, dataFim, pagina, tamanho);
             
             return Response.ok(SuccessResponseDTO.ok("Resgates listados com sucesso", resgates)).build();
         } catch (Exception e) {
@@ -58,8 +62,8 @@ public class ResgateResource {
     @Path("/{id}")
     public Response buscarResgate(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de busca
-            ResgateDTO resgate = new ResgateDTO();
+            // Implementar serviço de busca
+            ResgateResponseDTO resgate = new ResgateResponseDTO();
             
             return Response.ok(SuccessResponseDTO.ok("Resgate encontrado com sucesso", resgate)).build();
         } catch (Exception e) {
@@ -73,8 +77,8 @@ public class ResgateResource {
     @Path("/{id}/aprovar")
     public Response aprovarResgate(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de aprovação
-            ResgateDTO resgate = new ResgateDTO();
+            // Implementar serviço de aprovação
+            ResgateResponseDTO resgate = new ResgateResponseDTO();
             
             return Response.ok(SuccessResponseDTO.ok("Resgate aprovado com sucesso", resgate)).build();
         } catch (Exception e) {
@@ -88,8 +92,8 @@ public class ResgateResource {
     @Path("/{id}/concluir")
     public Response concluirResgate(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de conclusão
-            ResgateDTO resgate = new ResgateDTO();
+            // Implementar serviço de conclusão
+            ResgateResponseDTO resgate = new ResgateResponseDTO();
             
             return Response.ok(SuccessResponseDTO.ok("Resgate concluído com sucesso", resgate)).build();
         } catch (Exception e) {
@@ -105,8 +109,8 @@ public class ResgateResource {
             @PathParam("id") Long id,
             @QueryParam("motivo") String motivo) {
         try {
-            // TODO: Implementar serviço de negação
-            ResgateDTO resgate = new ResgateDTO();
+            // Implementar serviço de negação
+            ResgateResponseDTO resgate = new ResgateResponseDTO();
             
             return Response.ok(SuccessResponseDTO.ok("Resgate negado com sucesso", resgate)).build();
         } catch (Exception e) {
@@ -120,8 +124,8 @@ public class ResgateResource {
     @Path("/{id}/cancelar")
     public Response cancelarResgate(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de cancelamento
-            ResgateDTO resgate = new ResgateDTO();
+            // Implementar serviço de cancelamento
+            ResgateResponseDTO resgate = new ResgateResponseDTO();
             
             return Response.ok(SuccessResponseDTO.ok("Resgate cancelado com sucesso", resgate)).build();
         } catch (Exception e) {
@@ -135,11 +139,11 @@ public class ResgateResource {
     @Path("/{id}/status")
     public Response consultarStatusResgate(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de consulta de status
+            // Implementar serviço de consulta de status
             
-            // TODO: Implementar método consultarStatusResgate no ResgateService
-            // ResgateDTO resgate = resgateService.consultarStatusResgate(id);
-            ResgateDTO resgate = new ResgateDTO();
+            // Implementar método consultarStatusResgate no ResgateService
+            // ResgateResponseDTO resgate = resgateService.consultarStatusResgate(id);
+            ResgateResponseDTO resgate = new ResgateResponseDTO();
             return Response.ok(SuccessResponseDTO.ok("Status do resgate consultado com sucesso", resgate)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -157,8 +161,7 @@ public class ResgateResource {
             @QueryParam("tamanho") @DefaultValue("20") Integer tamanho) {
         
         try {
-            // TODO: Implementar serviço de resgates por usuário
-            List<ResgateDTO> resgates = List.of();
+            PageResponseDTO<ResgateResponseDTO> resgates = resgateService.listarResgatesUsuario(usuarioId, status, pagina, tamanho);
             
             return Response.ok(SuccessResponseDTO.ok("Resgates do usuário listados com sucesso", resgates)).build();
         } catch (Exception e) {
@@ -172,11 +175,11 @@ public class ResgateResource {
     @Path("/{id}/rastreio")
     public Response consultarRastreioResgate(@PathParam("id") Long id) {
         try {
-            // TODO: Implementar serviço de rastreio
+            // Implementar serviço de rastreio
             
-            // TODO: Implementar método consultarRastreioResgate no ResgateService
-            // ResgateDTO resgate = resgateService.consultarRastreioResgate(id);
-            ResgateDTO resgate = new ResgateDTO();
+            // Implementar método consultarRastreioResgate no ResgateService
+            // ResgateResponseDTO resgate = resgateService.consultarRastreioResgate(id);
+            ResgateResponseDTO resgate = new ResgateResponseDTO();
             return Response.ok(SuccessResponseDTO.ok("Rastreio do resgate consultado com sucesso", resgate)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

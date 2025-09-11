@@ -1,0 +1,306 @@
+<div class="campanhas-container">
+  <div class="header">
+    <h2>Campanhas de Bônus</h2>
+    <button 
+      class="btn btn-primary" 
+      (click)="novaCampanha()"
+      [disabled]="carregando">
+      <i class="icon-plus"></i>
+      Nova Campanha
+    </button>
+  </div>
+
+  <!-- Alertas -->
+  <div *ngIf="erro" class="alert alert-error">
+    <span>{{ erro }}</span>
+    <button class="btn-close" (click)="fecharAlerta()">&times;</button>
+  </div>
+
+  <div *ngIf="sucesso" class="alert alert-success">
+    <span>{{ sucesso }}</span>
+    <button class="btn-close" (click)="fecharAlerta()">&times;</button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros">
+    <div class="filtro-group">
+      <label for="filtro-ativo">Status:</label>
+      <select id="filtro-ativo" [(ngModel)]="filtros.ativo">
+        <option value="">Todos</option>
+        <option [value]="true">Ativas</option>
+        <option [value]="false">Inativas</option>
+      </select>
+    </div>
+
+    <div class="filtro-group">
+      <label for="filtro-vigente">Vigência:</label>
+      <select id="filtro-vigente" [(ngModel)]="filtros.vigente">
+        <option value="">Todas</option>
+        <option [value]="true">Vigentes</option>
+        <option [value]="false">Não Vigentes</option>
+      </select>
+    </div>
+
+    <div class="filtro-group">
+      <label for="filtro-segmento">Segmento:</label>
+      <input 
+        id="filtro-segmento" 
+        type="text" 
+        [(ngModel)]="filtros.segmento"
+        placeholder="Digite o segmento">
+    </div>
+
+    <div class="filtro-group">
+      <label for="filtro-prioridade">Prioridade:</label>
+      <input 
+        id="filtro-prioridade" 
+        type="number" 
+        [(ngModel)]="filtros.prioridade"
+        placeholder="Prioridade">
+    </div>
+
+    <div class="filtro-actions">
+      <button class="btn btn-secondary" (click)="aplicarFiltros()">
+        <i class="icon-search"></i>
+        Filtrar
+      </button>
+      <button class="btn btn-outline" (click)="limparFiltros()">
+        <i class="icon-clear"></i>
+        Limpar
+      </button>
+    </div>
+  </div>
+
+  <!-- Lista de Campanhas -->
+  <div class="campanhas-list" *ngIf="!modoEdicao">
+    <div *ngIf="carregando" class="loading">
+      <i class="icon-spinner"></i>
+      Carregando campanhas...
+    </div>
+
+    <div *ngIf="!carregando && campanhas.length === 0" class="empty-state">
+      <i class="icon-campaign"></i>
+      <p>Nenhuma campanha encontrada</p>
+    </div>
+
+    <div *ngIf="!carregando && campanhas.length > 0" class="campanhas-grid">
+      <div *ngFor="let campanha of campanhas" class="campanha-card">
+        <div class="campanha-header">
+          <h3>{{ campanha.nome }}</h3>
+          <div class="campanha-actions">
+            <button 
+              class="btn btn-sm btn-outline" 
+              (click)="editarCampanha(campanha)"
+              [disabled]="carregando">
+              <i class="icon-edit"></i>
+            </button>
+            <button 
+              class="btn btn-sm btn-danger" 
+              (click)="deletarCampanha(campanha)"
+              [disabled]="carregando">
+              <i class="icon-delete"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="campanha-content">
+          <div class="campanha-info">
+            <div class="info-item" *ngIf="campanha.descricao">
+              <label>Descrição:</label>
+              <span class="descricao">{{ campanha.descricao }}</span>
+            </div>
+            
+            <div class="info-item">
+              <label>Multiplicador:</label>
+              <span class="multiplicador">{{ formatarMultiplicador(campanha.multiplicadorExtra) }}</span>
+            </div>
+            
+            <div class="info-item">
+              <label>Prioridade:</label>
+              <span>{{ campanha.prioridade }}</span>
+            </div>
+
+            <div class="info-item" *ngIf="campanha.segmento">
+              <label>Segmento:</label>
+              <span>{{ campanha.segmento }}</span>
+            </div>
+
+            <div class="info-item" *ngIf="campanha.teto">
+              <label>Teto:</label>
+              <span>{{ campanha.teto | number }}</span>
+            </div>
+          </div>
+
+          <div class="campanha-dates">
+            <div class="date-item">
+              <label>Início:</label>
+              <span>{{ formatarData(campanha.vigenciaIni) }}</span>
+            </div>
+            
+            <div class="date-item" *ngIf="campanha.vigenciaFim">
+              <label>Fim:</label>
+              <span>{{ formatarData(campanha.vigenciaFim) }}</span>
+            </div>
+          </div>
+
+          <div class="campanha-status">
+            <span 
+              class="status-badge" 
+              [ngClass]="obterStatusVigencia(campanha).classe">
+              {{ obterStatusVigencia(campanha).status }}
+            </span>
+          </div>
+        </div>
+
+        <div class="campanha-footer">
+          <button 
+            *ngIf="!campanha.estaVigente" 
+            class="btn btn-sm btn-success" 
+            (click)="ativarCampanha(campanha)"
+            [disabled]="carregando">
+            <i class="icon-play"></i>
+            Ativar
+          </button>
+          <button 
+            *ngIf="campanha.estaVigente" 
+            class="btn btn-sm btn-warning" 
+            (click)="desativarCampanha(campanha)"
+            [disabled]="carregando">
+            <i class="icon-pause"></i>
+            Desativar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulário de Edição/Criação -->
+  <div class="campanha-form" *ngIf="modoEdicao">
+    <div class="form-header">
+      <h3>{{ campanhaSelecionada ? 'Editar Campanha' : 'Nova Campanha' }}</h3>
+      <button class="btn btn-outline" (click)="cancelarEdicao()">
+        <i class="icon-close"></i>
+        Cancelar
+      </button>
+    </div>
+
+    <form (ngSubmit)="salvarCampanha()" class="form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="nome">Nome *</label>
+          <input 
+            id="nome" 
+            type="text" 
+            [(ngModel)]="formulario.nome" 
+            name="nome"
+            required
+            maxlength="120"
+            placeholder="Nome da campanha">
+        </div>
+
+        <div class="form-group">
+          <label for="multiplicador">Multiplicador Extra *</label>
+          <input 
+            id="multiplicador" 
+            type="number" 
+            [(ngModel)]="formulario.multiplicadorExtra" 
+            name="multiplicador"
+            step="0.0001"
+            min="0"
+            required
+            placeholder="0.0000">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="descricao">Descrição</label>
+          <textarea 
+            id="descricao" 
+            [(ngModel)]="formulario.descricao" 
+            name="descricao"
+            maxlength="500"
+            rows="3"
+            placeholder="Descrição detalhada da campanha">
+          </textarea>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="vigenciaIni">Data de Início *</label>
+          <input 
+            id="vigenciaIni" 
+            type="date" 
+            [(ngModel)]="formulario.vigenciaIni" 
+            name="vigenciaIni"
+            required>
+        </div>
+
+        <div class="form-group">
+          <label for="vigenciaFim">Data de Fim</label>
+          <input 
+            id="vigenciaFim" 
+            type="date" 
+            [(ngModel)]="formulario.vigenciaFim" 
+            name="vigenciaFim">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="segmento">Segmento</label>
+          <input 
+            id="segmento" 
+            type="text" 
+            [(ngModel)]="formulario.segmento" 
+            name="segmento"
+            maxlength="60"
+            placeholder="Segmento da campanha">
+        </div>
+
+        <div class="form-group">
+          <label for="prioridade">Prioridade *</label>
+          <input 
+            id="prioridade" 
+            type="number" 
+            [(ngModel)]="formulario.prioridade" 
+            name="prioridade"
+            min="0"
+            required
+            placeholder="0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="teto">Teto</label>
+          <input 
+            id="teto" 
+            type="number" 
+            [(ngModel)]="formulario.teto" 
+            name="teto"
+            min="1"
+            placeholder="Teto de pontos">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          class="btn btn-primary"
+          [disabled]="carregando">
+          <i class="icon-save"></i>
+          {{ carregando ? 'Salvando...' : 'Salvar' }}
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-outline"
+          (click)="cancelarEdicao()"
+          [disabled]="carregando">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

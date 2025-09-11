@@ -47,9 +47,7 @@ public class PontosResource {
         try {
             LOG.info("Consultando saldo do usuário - ID: " + usuarioId);
             
-            // TODO: Implementar método consultarSaldoUsuario no PontosService
-            // SaldoUsuarioDTO saldo = pontosService.consultarSaldoUsuario(usuarioId);
-            SaldoUsuarioDTO saldo = new SaldoUsuarioDTO(usuarioId, null);
+            SaldoUsuarioDTO saldo = pontosService.consultarSaldo(usuarioId);
             
             LOG.info("Saldo consultado com sucesso - usuário: " + usuarioId);
             
@@ -105,9 +103,7 @@ public class PontosResource {
             parseDate(dataInicio);
             parseDate(dataFim);
             
-            // TODO: Implementar método consultarExtratoUsuario no PontosService
-            // ExtratoPontosDTO extrato = pontosService.consultarExtratoUsuario(usuarioId, cartaoId, inicio, fim, tipoMovimento, categoria, parceiroId, pagina, tamanho);
-            ExtratoPontosDTO extrato = new ExtratoPontosDTO(usuarioId, cartaoId, null, null, null, pagina, tamanho, 0L);
+            ExtratoPontosDTO extrato = pontosService.consultarExtrato(usuarioId, cartaoId, dataInicio, dataFim, tipoMovimento, categoria, parceiroId, pagina, tamanho);
             
             LOG.info("Extrato consultado com sucesso - usuário: " + usuarioId);
             
@@ -143,9 +139,7 @@ public class PontosResource {
         try {
             LOG.info("Consultando saldo do cartão - usuário: " + usuarioId + ", cartão: " + cartaoId);
             
-            // TODO: Implementar método consultarSaldoCartao no PontosService
-            // SaldoPontosDTO saldo = pontosService.consultarSaldoCartao(usuarioId, cartaoId);
-            SaldoPontosDTO saldo = new SaldoPontosDTO(cartaoId, 0L, null);
+            SaldoPontosDTO saldo = pontosService.consultarSaldoCartao(usuarioId, cartaoId);
             
             LOG.info("Saldo do cartão consultado com sucesso - cartão: " + cartaoId);
             
@@ -195,9 +189,7 @@ public class PontosResource {
             parseDate(dataInicio);
             parseDate(dataFim);
             
-            // TODO: Implementar método consultarMovimentos no PontosService
-            // List<MovimentoPontosDTO> movimentos = pontosService.consultarMovimentos(usuarioId, cartaoId, tipo, inicio, fim, pagina, tamanho);
-            List<MovimentoPontosDTO> movimentos = List.of();
+            List<MovimentoPontosDTO> movimentos = pontosService.consultarMovimentos(usuarioId, cartaoId, tipo, dataInicio, dataFim, pagina, tamanho);
             
             LOG.info("Movimentos consultados com sucesso - usuário: " + usuarioId);
             
@@ -230,9 +222,7 @@ public class PontosResource {
         try {
             LOG.info("Consultando resumo do usuário - ID: " + usuarioId);
             
-            // TODO: Implementar método consultarResumoUsuario no PontosService
-            // SaldoUsuarioDTO resumo = pontosService.consultarResumoUsuario(usuarioId);
-            SaldoUsuarioDTO resumo = new SaldoUsuarioDTO(usuarioId, null);
+            SaldoUsuarioDTO resumo = pontosService.consultarSaldo(usuarioId);
             
             LOG.info("Resumo consultado com sucesso - usuário: " + usuarioId);
             

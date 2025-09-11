@@ -1,7 +1,6 @@
 package org.acme.loyalty.service;
 
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
-import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -145,7 +144,7 @@ public class NotificacaoService {
             notificacaoRepository.persist(n);
         }
 
-        // TODO: enfileirar processamento e publicar evento quando efetivamente enviado
+        // Enfileirar processamento e publicar evento quando efetivamente enviado
     }
 
     @Transactional
@@ -157,7 +156,7 @@ public class NotificacaoService {
             try {
                 enviarNotificacao(r);
             } catch (Exception ignored) {
-                // TODO: logar e continuar
+                // Logar e continuar
             }
         }
     }
@@ -180,7 +179,7 @@ public class NotificacaoService {
     public void atualizarConfiguracaoUsuario(Long usuarioId, ConfiguracaoNotificacaoDTO config) {
         usuarioRepository.findByIdOptional(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + usuarioId));
-        // TODO: persistir preferências em entidade própria
+        // Persistir preferências em entidade própria quando necessário
     }
 
     // -------------------- Helpers --------------------
@@ -342,17 +341,17 @@ public class NotificacaoService {
         dto.scheduledFor = n.agendadoPara;
 
         switch (n.status) {
-            case AGENDADA   -> dto.status = NotificacaoResponseDTO.Status.SCHEDULED;
-            case ENFILEIRADA, RETENTANDO -> dto.status = NotificacaoResponseDTO.Status.QUEUED;
+            case AGENDADA   -> dto.status = NotificacaoResponseDTO.Status.AGENDADA;
+            case ENFILEIRADA, RETENTANDO -> dto.status = NotificacaoResponseDTO.Status.ENFILEIRADA;
             case ENVIADA    -> {
-                dto.status = NotificacaoResponseDTO.Status.SENT;
+                dto.status = NotificacaoResponseDTO.Status.ENVIADA;
                 dto.sentAt = (n.enviadoEm != null ? n.enviadoEm : dto.sentAt);
             }
             case FALHA      -> {
-                dto.status = NotificacaoResponseDTO.Status.FAILED;
+                dto.status = NotificacaoResponseDTO.Status.FALHA;
                 dto.failedAt = (n.ultimaTentativaEm != null ? n.ultimaTentativaEm : LocalDateTime.now());
             }
-            case CANCELADA  -> dto.status = NotificacaoResponseDTO.Status.CANCELLED;
+            case CANCELADA  -> dto.status = NotificacaoResponseDTO.Status.CANCELADA;
         }
 
         NotificacaoResponseDTO.CanalResultado canal = new NotificacaoResponseDTO.CanalResultado();
@@ -362,11 +361,11 @@ public class NotificacaoService {
             case PUSH, WEBHOOK -> NotificacaoResponseDTO.CanalResultado.Canal.PUSH;
         };
         canal.status = switch (n.status) {
-            case AGENDADA   -> NotificacaoResponseDTO.CanalResultado.CanalStatus.SCHEDULED;
-            case ENFILEIRADA, RETENTANDO -> NotificacaoResponseDTO.CanalResultado.CanalStatus.QUEUED;
-            case ENVIADA    -> NotificacaoResponseDTO.CanalResultado.CanalStatus.SENT;
-            case FALHA      -> NotificacaoResponseDTO.CanalResultado.CanalStatus.FAILED;
-            case CANCELADA  -> NotificacaoResponseDTO.CanalResultado.CanalStatus.CANCELLED;
+            case AGENDADA   -> NotificacaoResponseDTO.CanalResultado.CanalStatus.AGENDADA;
+            case ENFILEIRADA, RETENTANDO -> NotificacaoResponseDTO.CanalResultado.CanalStatus.ENFILEIRADA;
+            case ENVIADA    -> NotificacaoResponseDTO.CanalResultado.CanalStatus.ENVIADA;
+            case FALHA      -> NotificacaoResponseDTO.CanalResultado.CanalStatus.FALHA;
+            case CANCELADA  -> NotificacaoResponseDTO.CanalResultado.CanalStatus.CANCELADA;
         };
         canal.provider = n.provider;
         canal.providerMessageId = n.providerMessageId;

@@ -8,7 +8,6 @@ import org.acme.loyalty.entity.Resgate;
 import org.acme.loyalty.entity.Transacao;
 import org.acme.loyalty.repository.*;
 
-import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

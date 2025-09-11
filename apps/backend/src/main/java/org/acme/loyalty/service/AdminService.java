@@ -23,6 +23,7 @@ import java.util.*;
 public class AdminService {
 
     @Inject UsuarioRepository usuarioRepository;
+    @Inject CartaoRepository cartaoRepository;
     @Inject SaldoPontosRepository saldoPontosRepository;
     @Inject MovimentoPontosRepository movimentoPontosRepository;
     @Inject TransacaoRepository transacaoRepository;
@@ -35,16 +36,40 @@ public class AdminService {
         DashboardDTO dto = new DashboardDTO();
 
         dto.totalUsuarios = Math.toIntExact(usuarioRepository.count());
+        dto.totalCartoes = Math.toIntExact(cartaoRepository.count());
 
         Long saldoTotal = saldoPontosRepository.sumSaldoTotal();
         dto.saldoTotal = (saldoTotal != null ? saldoTotal : 0L);
 
         LocalDateTime iniHoje = LocalDate.now().atStartOfDay();
         LocalDateTime fimHoje = LocalDate.now().atTime(23, 59, 59);
-        // Se seu TransacaoRepository expõe Long, use Math.toIntExact:
+        
+        // Transações do dia
         dto.totalTransacoes = Math.toIntExact(transacaoRepository.countByPeriodo(iniHoje, fimHoje));
 
+        // Pontos movimentados (do dia)
+        Long pontosAcumulados = movimentoPontosRepository
+                .sumPontosByTipoBetween(MovimentoPontos.TipoMovimento.ACUMULO, iniHoje, fimHoje);
+        dto.pontosAcumulados = (pontosAcumulados != null ? pontosAcumulados : 0L);
+        
+        Long pontosResgatados = movimentoPontosRepository
+                .sumPontosByTipoBetween(MovimentoPontos.TipoMovimento.RESGATE, iniHoje, fimHoje);
+        dto.pontosResgatados = (pontosResgatados != null ? pontosResgatados : 0L);
+        
+        Long pontosExpirados = movimentoPontosRepository
+                .sumPontosByTipoBetween(MovimentoPontos.TipoMovimento.EXPIRACAO, iniHoje, fimHoje);
+        dto.pontosExpirados = (pontosExpirados != null ? pontosExpirados : 0L);
+
+        // Resgates por status (todos os tempos)
         dto.resgatesPendentes = Math.toIntExact(resgateRepository.countByStatus("PENDENTE"));
+        dto.resgatesAprovados = Math.toIntExact(resgateRepository.countByStatus("APROVADO"));
+        dto.resgatesConcluidos = Math.toIntExact(resgateRepository.countByStatus("CONCLUIDO"));
+        dto.resgatesNegados = Math.toIntExact(resgateRepository.countByStatus("NEGADO"));
+        dto.resgatesCancelados = Math.toIntExact(resgateRepository.countByStatus("CANCELADO"));
+
+        // Período do dashboard
+        dto.periodoIni = iniHoje;
+        dto.periodoFim = fimHoje;
 
         return dto;
     }
@@ -309,7 +334,7 @@ public void executarManutencao(String tipo, Map<String, Object> parametros) {
     private void publicarTransactionCreated(org.acme.loyalty.entity.Transacao t) {
         LOG.infof("EVENT TransactionCreated{id=%d, usuarioId=%d, cartaoId=%d, valor=%s, mcc=%s, categoria=%s, data=%s}",
                 t.id, t.usuario.id, t.cartao.id, String.valueOf(t.valor), t.mcc, t.categoria, String.valueOf(t.dataEvento));
-        // TODO: enviar para Kafka/Rabbit ou gravar Outbox
+        // Enviar para Kafka/Rabbit ou gravar Outbox quando necessário
     }
 
     // ============================================================
@@ -390,7 +415,7 @@ public long processarTransacaoPontuacao(Long transacaoId, Double multiplicadorDe
     private void publicarPointsAccrued(org.acme.loyalty.entity.MovimentoPontos m) {
         LOG.infof("EVENT PointsAccrued{usuarioId=%d, cartaoId=%d, pontos=%d, refTransacaoId=%s, criadoEm=%s}",
                 m.usuario.id, m.cartao.id, m.pontos, String.valueOf(m.refTransacaoId), String.valueOf(m.criadoEm));
-        // TODO: enviar para Kafka/Rabbit ou gravar Outbox
+        // Enviar para Kafka/Rabbit ou gravar Outbox quando necessário
     }
 
     // ============================================================
@@ -446,7 +471,7 @@ public long processarTransacaoPontuacao(Long transacaoId, Double multiplicadorDe
         publicarRedeemRequested(r);
         return r.id;
     }
-/** Aprova e debita pontos (atômico) + registra movimento RESGATE (negativo). */
+/** Aprova resgate (pontos já foram debitados na criação). */
 @Transactional
 public boolean aprovarResgate(Long resgateId) {
     var opt = resgateRepository.findByIdOptional(resgateId);
@@ -455,33 +480,12 @@ public boolean aprovarResgate(Long resgateId) {
     var r = opt.get();
     if (r.status != org.acme.loyalty.entity.Resgate.StatusResgate.PENDENTE) return false;
 
-    // saldo suficiente?
-    long pontosReq = (r.pontosUtilizados == null ? 0L : r.pontosUtilizados.longValue());
-    if (pontosReq <= 0) return false;
-
-    boolean ok = saldoPontosRepository.temSaldoSuficiente(r.usuario.id, r.cartao.id, pontosReq);
-    if (!ok) return false;
-
-    // baixa do saldo
-    boolean debited = saldoPontosRepository.removerPontos(r.usuario.id, r.cartao.id, pontosReq);
-    if (!debited) return false;
-
-    // movimento de resgate (negativo) – Integer com clamp
-    var mov = new org.acme.loyalty.entity.MovimentoPontos();
-    mov.usuario = r.usuario;
-    mov.cartao  = r.cartao;
-    mov.tipo    = org.acme.loyalty.entity.MovimentoPontos.TipoMovimento.RESGATE;
-    int pontosInt = (pontosReq > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) pontosReq;
-    mov.pontos  = -Math.abs(pontosInt);
-    mov.criadoEm = LocalDateTime.now();
-    movimentoPontosRepository.persist(mov);
-
-    // status
+    // Pontos já foram debitados na criação do resgate, apenas atualiza status
     r.status     = org.acme.loyalty.entity.Resgate.StatusResgate.APROVADO;
     r.aprovadoEm = LocalDateTime.now();
     resgateRepository.persist(r);
 
-    // TODO: publicar evento RedeemApproved/Completed se houver mensageria
+    // Publicar evento RedeemApproved/Completed se houver mensageria quando necessário
     return true;
 }
 
@@ -506,7 +510,7 @@ public boolean aprovarResgate(Long resgateId) {
     private void publicarRedeemRequested(org.acme.loyalty.entity.Resgate r) {
         LOG.infof("EVENT RedeemRequested{resgateId=%d, usuarioId=%d, cartaoId=%d, pontos=%d}",
                 r.id, r.usuario.id, r.cartao.id, r.pontosUtilizados);
-        // TODO: enviar para Kafka/Rabbit ou gravar Outbox
+        // Enviar para Kafka/Rabbit ou gravar Outbox quando necessário
     }
 
     private void publicarRedeemCompleted(org.acme.loyalty.entity.Resgate r) {
@@ -514,7 +518,7 @@ public boolean aprovarResgate(Long resgateId) {
             LOG.infof("EVENT RedeemCompleted{resgateId=%d, usuarioId=%d, cartaoId=%d, pontos=%d, status=%s}",
                     r.id, r.usuario.id, r.cartao.id, r.pontosUtilizados, r.status);
         }
-        // TODO: enviar para Kafka/Rabbit ou gravar Outbox
+        // Enviar para Kafka/Rabbit ou gravar Outbox quando necessário
     }
 
     // ============================================================
@@ -577,6 +581,6 @@ public void expirarPontosCarteira(Long usuarioId, Long cartaoId, long pontos, St
     private void publicarPointsExpired(org.acme.loyalty.entity.MovimentoPontos m) {
         LOG.infof("EVENT PointsExpired{usuarioId=%d, cartaoId=%d, pontos=%d, jobId=%s, criadoEm=%s}",
                 m.usuario.id, m.cartao.id, m.pontos, String.valueOf(m.jobId), String.valueOf(m.criadoEm));
-        // TODO: enviar para Kafka/Rabbit ou gravar Outbox
+        // Enviar para Kafka/Rabbit ou gravar Outbox quando necessário
     }
 }

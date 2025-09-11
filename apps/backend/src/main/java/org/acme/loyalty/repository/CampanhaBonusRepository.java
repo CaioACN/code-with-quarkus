@@ -3,7 +3,6 @@ package org.acme.loyalty.repository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
-import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.acme.loyalty.entity.CampanhaBonus;
 
@@ -21,10 +20,10 @@ import java.util.Optional;
 @ApplicationScoped
 public class CampanhaBonusRepository implements PanacheRepository<CampanhaBonus> {
 
-    private static final Sort DEFAULT_SORT =
-            Sort.by("prioridade").descending()
-                .and("vigenciaIni").descending()
-                .and("id").ascending();
+    // private static final Sort DEFAULT_SORT =
+    //         Sort.by("prioridade").descending()
+    //             .and("vigenciaIni").descending()
+    //             .and("id").ascending();
 
     // --------------------- Consultas básicas ---------------------
 

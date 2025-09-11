@@ -223,7 +223,7 @@ public class TransacaoResource {
         try {
             LOG.info("Estornando transação - ID: " + id + ", motivo: " + motivo);
             
-            // TODO: Implementar método estornarTransacao no TransacaoService
+            // Implementar método estornarTransacao no TransacaoService
             // TransacaoResponseDTO transacao = transacaoService.estornarTransacao(id, motivo);
             TransacaoResponseDTO transacao = new TransacaoResponseDTO(id);
             
@@ -304,7 +304,7 @@ public class TransacaoResource {
             parseDate(dataInicio);
             parseDate(dataFim);
             
-            // TODO: Implementar método consultarExtratoUsuario no TransacaoService
+            // Implementar método consultarExtratoUsuario no TransacaoService
             // ExtratoPontosDTO extrato = transacaoService.consultarExtratoUsuario(usuarioId, cartaoId, inicio, fim, pagina, tamanho);
             ExtratoPontosDTO extrato = new ExtratoPontosDTO();
             

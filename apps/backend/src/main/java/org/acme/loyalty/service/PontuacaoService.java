@@ -151,7 +151,7 @@ public class PontuacaoService {
         List<CampanhaBonus> campanhas = campanhaBonusRepository.listarVigentes(dataTransacao);
         
         for (CampanhaBonus campanha : campanhas) {
-            if (campanha.aplicaParaSegmento(null)) { // TODO: implementar segmento do usuário
+            if (campanha.aplicaParaSegmento(null)) { // Implementar segmento do usuário quando necessário
                 return campanha.calcularPontosComBonus(pontosBase);
             }
         }

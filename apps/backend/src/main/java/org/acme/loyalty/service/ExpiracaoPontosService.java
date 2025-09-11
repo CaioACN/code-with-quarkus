@@ -24,7 +24,7 @@ import java.util.UUID;
  * - Publicar eventos de expiração
  */
 @ApplicationScoped
-public class ExpiraçãoPontosService {
+public class ExpiracaoPontosService {
 
     @Inject
     MovimentoPontosRepository movimentoPontosRepository;
@@ -40,7 +40,7 @@ public class ExpiraçãoPontosService {
      * Deve ser executado diariamente via scheduler.
      */
     @Transactional
-    public void executarExpiraçãoDiaria() {
+    public void executarExpiracaoDiaria() {
         String jobId = UUID.randomUUID().toString();
         LocalDate hoje = LocalDate.now();
         
@@ -48,19 +48,19 @@ public class ExpiraçãoPontosService {
         LocalDate dataLimite = hoje.minusMonths(12);
         
         // Buscar movimentos de acúmulo elegíveis para expiração
-        List<MovimentoPontos> movimentosElegiveis = buscarMovimentosElegiveisParaExpiração(dataLimite);
+        List<MovimentoPontos> movimentosElegiveis = buscarMovimentosElegiveisParaExpiracao(dataLimite);
         
         for (MovimentoPontos movimento : movimentosElegiveis) {
-            processarExpiraçãoMovimento(movimento, jobId);
+            processarExpiracaoMovimento(movimento, jobId);
         }
         
-        // TODO: Log de auditoria com quantidade de pontos expirados
+        // Log de auditoria com quantidade de pontos expirados quando necessário
     }
     
     /**
      * Busca movimentos de acúmulo elegíveis para expiração
      */
-    private List<MovimentoPontos> buscarMovimentosElegiveisParaExpiração(LocalDate dataLimite) {
+    private List<MovimentoPontos> buscarMovimentosElegiveisParaExpiracao(LocalDate dataLimite) {
         LocalDateTime inicioLimite = dataLimite.atStartOfDay();
         LocalDateTime fimLimite = dataLimite.atTime(23, 59, 59);
         
@@ -75,7 +75,7 @@ public class ExpiraçãoPontosService {
     /**
      * Processa expiração de um movimento específico
      */
-    private void processarExpiraçãoMovimento(MovimentoPontos movimentoOriginal, String jobId) {
+    private void processarExpiracaoMovimento(MovimentoPontos movimentoOriginal, String jobId) {
         // Verificar se já foi expirado
         if (movimentoPontosRepository.existeMovimentoParaTransacao(
             movimentoOriginal.refTransacaoId, MovimentoPontos.TipoMovimento.EXPIRACAO)) {
@@ -100,17 +100,17 @@ public class ExpiraçãoPontosService {
         }
         
         // Criar movimento de expiração
-        MovimentoPontos movimentoExpiração = new MovimentoPontos(
+        MovimentoPontos movimentoExpiracao = new MovimentoPontos(
             movimentoOriginal.usuario,
             movimentoOriginal.cartao,
             MovimentoPontos.TipoMovimento.EXPIRACAO,
             -pontosAExpirar.intValue(), // Valor negativo para débito
             "Expiração automática de pontos"
         );
-        movimentoExpiração.jobId = jobId;
-        movimentoExpiração.refTransacaoId = movimentoOriginal.refTransacaoId;
+        movimentoExpiracao.jobId = jobId;
+        movimentoExpiracao.refTransacaoId = movimentoOriginal.refTransacaoId;
         
-        movimentoPontosRepository.persist(movimentoExpiração);
+        movimentoPontosRepository.persist(movimentoExpiracao);
         
         // Atualizar saldo
         saldoPontosRepository.debitarSaldoAtomicamente(
@@ -134,7 +134,7 @@ public class ExpiraçãoPontosService {
      * Executa expiração para um usuário específico (para testes ou correções)
      */
     @Transactional
-    public void executarExpiraçãoUsuario(Long usuarioId, LocalDate dataLimite) {
+    public void executarExpiracaoUsuario(Long usuarioId, LocalDate dataLimite) {
         String jobId = UUID.randomUUID().toString();
         
         List<MovimentoPontos> movimentos = movimentoPontosRepository.find(
@@ -145,7 +145,7 @@ public class ExpiraçãoPontosService {
         ).list();
         
         for (MovimentoPontos movimento : movimentos) {
-            processarExpiraçãoMovimento(movimento, jobId);
+            processarExpiracaoMovimento(movimento, jobId);
         }
     }
     
@@ -153,7 +153,7 @@ public class ExpiraçãoPontosService {
      * Executa expiração para um cartão específico (para testes ou correções)
      */
     @Transactional
-    public void executarExpiraçãoCartao(Long usuarioId, Long cartaoId, LocalDate dataLimite) {
+    public void executarExpiracaoCartao(Long usuarioId, Long cartaoId, LocalDate dataLimite) {
         String jobId = UUID.randomUUID().toString();
         
         List<MovimentoPontos> movimentos = movimentoPontosRepository.find(
@@ -165,7 +165,7 @@ public class ExpiraçãoPontosService {
         ).list();
         
         for (MovimentoPontos movimento : movimentos) {
-            processarExpiraçãoMovimento(movimento, jobId);
+            processarExpiracaoMovimento(movimento, jobId);
         }
     }
 }

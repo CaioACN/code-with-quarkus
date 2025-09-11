@@ -2,31 +2,37 @@ package org.acme.loyalty.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Check;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "movimento_pontos")
+@Table(name = "movimento_pontos", schema = "loyalty")
+@Check(constraints = "pontos <> 0 AND tipo IN ('ACUMULO', 'EXPIRACAO', 'RESGATE', 'ESTORNO', 'AJUSTE')")
 public class MovimentoPontos extends PanacheEntity {
     
-    @NotNull
+    @NotNull(message = "Usuário é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @JoinColumn(name = "usuario_id", nullable = false, foreignKey = @ForeignKey(name = "fk_movimento_usuario"))
     public Usuario usuario;
     
-    @NotNull
+    @NotNull(message = "Cartão é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cartao_id", nullable = false)
+    @JoinColumn(name = "cartao_id", nullable = false, foreignKey = @ForeignKey(name = "fk_movimento_cartao"))
     public Cartao cartao;
     
-    @NotNull
+    @NotNull(message = "Tipo de movimento é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 20)
     public TipoMovimento tipo;
     
-    @NotNull
+    @NotNull(message = "Pontos é obrigatório")
+    @AssertTrue(message = "Pontos deve ser diferente de zero")
+    public boolean isPontosValido() {
+        return pontos != null && pontos != 0;
+    }
+    
     @Column(name = "pontos", nullable = false)
     public Integer pontos;
     
@@ -34,24 +40,27 @@ public class MovimentoPontos extends PanacheEntity {
     public Long refTransacaoId;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transacao_id")
+    @JoinColumn(name = "transacao_id", foreignKey = @ForeignKey(name = "fk_movimento_transacao"))
     public Transacao transacao;
     
-    @Size(max = 500)
+    @Size(max = 500, message = "Observação deve ter no máximo 500 caracteres")
     @Column(name = "observacao", length = 500)
     public String observacao;
     
-    @NotNull
+    @NotNull(message = "Data de criação é obrigatória")
     @Column(name = "criado_em", nullable = false)
     public LocalDateTime criadoEm;
     
-    @Column(name = "job_id")
+    @Size(max = 100, message = "Job ID deve ter no máximo 100 caracteres")
+    @Column(name = "job_id", length = 100)
     public String jobId;
     
-    @Column(name = "regra_aplicada")
+    @Size(max = 200, message = "Regra aplicada deve ter no máximo 200 caracteres")
+    @Column(name = "regra_aplicada", length = 200)
     public String regraAplicada;
     
-    @Column(name = "campanha_aplicada")
+    @Size(max = 200, message = "Campanha aplicada deve ter no máximo 200 caracteres")
+    @Column(name = "campanha_aplicada", length = 200)
     public String campanhaAplicada;
     
     // Construtores
@@ -72,6 +81,22 @@ public class MovimentoPontos extends PanacheEntity {
         this(usuario, cartao, tipo, pontos, observacao);
         this.transacao = transacao;
         this.refTransacaoId = transacao.id;
+    }
+    
+    // ---- Normalização de dados ----
+    @PrePersist
+    @PreUpdate
+    protected void normalize() {
+        // Normalizar strings
+        if (observacao != null) observacao = observacao.trim();
+        if (jobId != null) jobId = jobId.trim();
+        if (regraAplicada != null) regraAplicada = regraAplicada.trim();
+        if (campanhaAplicada != null) campanhaAplicada = campanhaAplicada.trim();
+        
+        // Definir data de criação se não foi definida
+        if (criadoEm == null) {
+            criadoEm = LocalDateTime.now();
+        }
     }
     
     // Métodos de negócio conforme regra 17.6
@@ -120,6 +145,8 @@ public class MovimentoPontos extends PanacheEntity {
     }
     
     public String getDescricaoTipo() {
+        if (tipo == null) return "Movimento de pontos";
+        
         switch (this.tipo) {
             case ACUMULO: return "Acúmulo de pontos";
             case EXPIRACAO: return "Expiração de pontos";
@@ -130,7 +157,14 @@ public class MovimentoPontos extends PanacheEntity {
         }
     }
     
-    // Enum para tipos de movimento
+    /**
+     * Valida se o tipo é válido conforme DDL
+     */
+    public boolean temTipoValido() {
+        return tipo != null;
+    }
+    
+    // Enum para tipos de movimento (mantido para compatibilidade)
     public enum TipoMovimento {
         ACUMULO,
         EXPIRACAO,

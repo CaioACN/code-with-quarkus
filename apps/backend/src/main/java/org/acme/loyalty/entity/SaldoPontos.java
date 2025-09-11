@@ -2,43 +2,49 @@ package org.acme.loyalty.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Check;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "saldo_pontos")
+@Table(name = "saldo_pontos", schema = "loyalty")
 @IdClass(SaldoPontosId.class)
+@Check(constraints = "pontos_expirando_30_dias >= 0 AND pontos_expirando_60_dias >= 0 AND pontos_expirando_90_dias >= 0 AND saldo >= 0")
 public class SaldoPontos extends PanacheEntityBase {
     
     @Id
-    @NotNull
+    @NotNull(message = "Usuário é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @JoinColumn(name = "usuario_id", nullable = false, foreignKey = @ForeignKey(name = "fk_saldo_usuario"))
     public Usuario usuario;
     
     @Id
-    @NotNull
+    @NotNull(message = "Cartão é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cartao_id", nullable = false)
+    @JoinColumn(name = "cartao_id", nullable = false, foreignKey = @ForeignKey(name = "fk_saldo_cartao"))
     public Cartao cartao;
     
-    @NotNull
+    @NotNull(message = "Saldo é obrigatório")
+    @Min(value = 0, message = "Saldo deve ser maior ou igual a zero")
     @Column(name = "saldo", nullable = false)
-    public Long saldo;
+    public Long saldo = 0L;
     
-    @NotNull
+    @NotNull(message = "Data de atualização é obrigatória")
     @Column(name = "atualizado_em", nullable = false)
     public LocalDateTime atualizadoEm;
     
+    @Min(value = 0, message = "Pontos expirando em 30 dias deve ser maior ou igual a zero")
     @Column(name = "pontos_expirando_30_dias")
-    public Long pontosExpirando30Dias;
+    public Long pontosExpirando30Dias = 0L;
     
+    @Min(value = 0, message = "Pontos expirando em 60 dias deve ser maior ou igual a zero")
     @Column(name = "pontos_expirando_60_dias")
-    public Long pontosExpirando60Dias;
+    public Long pontosExpirando60Dias = 0L;
     
+    @Min(value = 0, message = "Pontos expirando em 90 dias deve ser maior ou igual a zero")
     @Column(name = "pontos_expirando_90_dias")
-    public Long pontosExpirando90Dias;
+    public Long pontosExpirando90Dias = 0L;
     
     // Construtores
     public SaldoPontos() {}
@@ -51,6 +57,33 @@ public class SaldoPontos extends PanacheEntityBase {
         this.pontosExpirando30Dias = 0L;
         this.pontosExpirando60Dias = 0L;
         this.pontosExpirando90Dias = 0L;
+    }
+    
+    // ---- Normalização de dados ----
+    @PrePersist
+    @PreUpdate
+    protected void normalize() {
+        // Definir valores padrão se não foram definidos
+        if (saldo == null) {
+            saldo = 0L;
+        }
+        
+        if (pontosExpirando30Dias == null) {
+            pontosExpirando30Dias = 0L;
+        }
+        
+        if (pontosExpirando60Dias == null) {
+            pontosExpirando60Dias = 0L;
+        }
+        
+        if (pontosExpirando90Dias == null) {
+            pontosExpirando90Dias = 0L;
+        }
+        
+        // Definir data de atualização se não foi definida
+        if (atualizadoEm == null) {
+            atualizadoEm = LocalDateTime.now();
+        }
     }
     
     // Métodos de negócio conforme regra 17.7
@@ -121,6 +154,43 @@ public class SaldoPontos extends PanacheEntityBase {
         if (saldo < 1000) return "BAIXO";
         if (saldo < 10000) return "MEDIO";
         return "ALTO";
+    }
+    
+    /**
+     * Verifica se o saldo é válido conforme DDL: saldo >= 0
+     */
+    public boolean temSaldoValido() {
+        return saldo != null && saldo >= 0;
+    }
+    
+    /**
+     * Verifica se os pontos expirando em 30 dias são válidos conforme DDL: pontos_expirando_30_dias >= 0
+     */
+    public boolean temPontosExpirando30Validos() {
+        return pontosExpirando30Dias == null || pontosExpirando30Dias >= 0;
+    }
+    
+    /**
+     * Verifica se os pontos expirando em 60 dias são válidos conforme DDL: pontos_expirando_60_dias >= 0
+     */
+    public boolean temPontosExpirando60Validos() {
+        return pontosExpirando60Dias == null || pontosExpirando60Dias >= 0;
+    }
+    
+    /**
+     * Verifica se os pontos expirando em 90 dias são válidos conforme DDL: pontos_expirando_90_dias >= 0
+     */
+    public boolean temPontosExpirando90Validos() {
+        return pontosExpirando90Dias == null || pontosExpirando90Dias >= 0;
+    }
+    
+    /**
+     * Verifica se todos os campos de pontos expirando são válidos conforme DDL
+     */
+    public boolean temTodosPontosExpirandoValidos() {
+        return temPontosExpirando30Validos() && 
+               temPontosExpirando60Validos() && 
+               temPontosExpirando90Validos();
     }
 }
 

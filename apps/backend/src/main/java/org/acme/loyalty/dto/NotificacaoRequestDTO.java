@@ -35,10 +35,10 @@ public class NotificacaoRequestDTO {
 
     @NotNull
     @Schema(description = "Tipo do evento que motiva a notificação", required = true,
-            enumeration = {"ACUMULO","EXPIRACAO","RESGATE","AJUSTE","SISTEMA"})
+            enumeration = {"ACUMULO","EXPIRACAO","RESGATE","SISTEMA","AJUSTE"})
     public Evento evento = Evento.SISTEMA;
 
-    public enum Evento { ACUMULO, EXPIRACAO, RESGATE, AJUSTE, SISTEMA }
+    public enum Evento { ACUMULO, EXPIRACAO, RESGATE, SISTEMA, AJUSTE }
 
     // ===================== Canais e contato =====================
 

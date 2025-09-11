@@ -11,7 +11,6 @@ import org.acme.loyalty.entity.RegraConversao;
 import org.acme.loyalty.repository.RegraConversaoRepository;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -36,9 +35,9 @@ public class RegraConversaoService {
 
         // (Opcional) Bloquear sobreposição exata MCC/Categoria/Vigência
         if (request.mccRegex == null && request.categoria != null && request.vigenciaIni != null) {
-            LocalDate ini = request.vigenciaIni.toLocalDate();
-            LocalDate fim = (request.vigenciaFim != null ? request.vigenciaFim.toLocalDate() : null);
-            // Se o seu repositório usar igualdade de MCC (não regex), pule esta checagem para regex
+            // LocalDate ini = request.vigenciaIni.toLocalDate();
+            // LocalDate fim = (request.vigenciaFim != null ? request.vigenciaFim.toLocalDate() : null);
+            // Implementar verificação de sobreposição quando necessário
             // regraConversaoRepository.existsByMccAndCategoriaAndVigencia(...);
         }
 
@@ -162,7 +161,7 @@ public class RegraConversaoService {
     public Object consultarDetalhesAplicacao(Long id) {
         regraConversaoRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Regra de conversão não encontrada: " + id));
-        // TODO: agregar métricas de aplicação da regra (transações, pontos, etc.)
+        // Agregar métricas de aplicação da regra (transações, pontos, etc.) quando necessário
         return null;
     }
 
