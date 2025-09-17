@@ -12,6 +12,8 @@ import org.acme.loyalty.entity.Notificacao;
 import org.acme.loyalty.entity.Usuario;
 import org.acme.loyalty.repository.NotificacaoRepository;
 import org.acme.loyalty.repository.UsuarioRepository;
+import org.acme.loyalty.repository.ConfiguracaoNotificacaoRepository;
+import org.acme.loyalty.entity.ConfiguracaoNotificacao;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -21,7 +23,10 @@ import java.util.stream.Collectors;
 public class NotificacaoService {
 
     @Inject NotificacaoRepository notificacaoRepository;
-    @Inject UsuarioRepository usuarioRepository;
+    @Inject public UsuarioRepository usuarioRepository;
+
+    @Inject
+    ConfiguracaoNotificacaoRepository configuracaoRepository;
 
     // -------------------- Listagem com filtros/paginação --------------------
     public List<NotificacaoResponseDTO> listarNotificacoes(Long usuarioId,
@@ -37,6 +42,7 @@ public class NotificacaoService {
 
         Notificacao.Tipo tipoEnum = parseTipo(tipo);
 
+        System.out.println("DEBUG: Calling queryByFiltros with usuarioId=" + usuarioId + ", de=null, ate=null");
         PanacheQuery<Notificacao> pq = notificacaoRepository.queryByFiltros(
                 usuarioId,
                 null,      // canal
@@ -46,8 +52,14 @@ public class NotificacaoService {
                 null,      // até
                 pageIndex, pageSize
         );
+        System.out.println("DEBUG: queryByFiltros completed successfully");
 
         return pq.list().stream().map(this::toNotificacaoResponseDTO).collect(Collectors.toList());
+    }
+
+    // -------------------- Debug --------------------
+    public Optional<Usuario> debugUsuario(Long usuarioId) {
+        return usuarioRepository.findByIdOptional(usuarioId);
     }
 
     // -------------------- Marcações de leitura --------------------
@@ -161,25 +173,52 @@ public class NotificacaoService {
         }
     }
 
-    // -------------------- Configurações (placeholder) --------------------
+    // -------------------- Configurações --------------------
     public ConfiguracaoNotificacaoDTO consultarConfiguracaoUsuario(Long usuarioId) {
-        usuarioRepository.findByIdOptional(usuarioId)
+        Usuario usuario = usuarioRepository.findByIdOptional(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + usuarioId));
 
-        ConfiguracaoNotificacaoDTO cfg = new ConfiguracaoNotificacaoDTO();
-        cfg.usuarioId = usuarioId;
-        cfg.emailAtivo = true;
-        cfg.pushAtivo  = true;
-        cfg.smsAtivo   = false;
-        // removido: cfg.inAppAtivo (campo não existe no DTO)
-        return cfg;
+        ConfiguracaoNotificacao config = configuracaoRepository.findByUsuarioId(usuarioId)
+                .orElseGet(() -> {
+                    // Criar configuração padrão se não existir
+                    ConfiguracaoNotificacao novaConfig = new ConfiguracaoNotificacao(usuario);
+                    configuracaoRepository.persist(novaConfig);
+                    return novaConfig;
+                });
+
+        return convertToDTO(config);
     }
 
     @Transactional
-    public void atualizarConfiguracaoUsuario(Long usuarioId, ConfiguracaoNotificacaoDTO config) {
-        usuarioRepository.findByIdOptional(usuarioId)
+    public void atualizarConfiguracaoUsuario(Long usuarioId, ConfiguracaoNotificacaoDTO configDTO) {
+        Usuario usuario = usuarioRepository.findByIdOptional(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuário não encontrado: " + usuarioId));
-        // Persistir preferências em entidade própria quando necessário
+
+        ConfiguracaoNotificacao config = configuracaoRepository.findByUsuarioId(usuarioId)
+                .orElseGet(() -> {
+                    ConfiguracaoNotificacao novaConfig = new ConfiguracaoNotificacao(usuario);
+                    configuracaoRepository.persist(novaConfig);
+                    return novaConfig;
+                });
+
+        // Atualizar campos
+        config.emailAtivo = configDTO.emailAtivo;
+        config.smsAtivo = configDTO.smsAtivo;
+        config.pushAtivo = configDTO.pushAtivo;
+        config.notificarAcumulo = configDTO.notificarAcumulo;
+        config.notificarExpiracao = configDTO.notificarExpiracao;
+        config.notificarResgate = configDTO.notificarResgate;
+        config.notificarCampanha = configDTO.notificarCampanha;
+        config.limiteMinimoPontosNotificar = configDTO.limiteMinimoPontosNotificar;
+        config.idiomaPreferido = configDTO.idiomaPreferido;
+        config.timezone = configDTO.timezone;
+        config.silencioInicio = configDTO.silencioInicio;
+        config.silencioFim = configDTO.silencioFim;
+        if (configDTO.digest != null) {
+            config.digest = ConfiguracaoNotificacao.DigestFrequency.valueOf(configDTO.digest.name());
+        }
+
+        configuracaoRepository.persist(config);
     }
 
     // -------------------- Helpers --------------------
@@ -233,13 +272,19 @@ public class NotificacaoService {
 
     private Notificacao.Tipo mapEventoToTipo(NotificacaoRequestDTO.Evento ev) {
         if (ev == null) return Notificacao.Tipo.SISTEMA;
-        return switch (ev) {
-            case ACUMULO -> Notificacao.Tipo.ACUMULO;
-            case EXPIRACAO -> Notificacao.Tipo.EXPIRACAO;
-            case RESGATE -> Notificacao.Tipo.RESGATE;
-            case AJUSTE -> Notificacao.Tipo.AJUSTE;
-            case SISTEMA -> Notificacao.Tipo.SISTEMA;
-        };
+        if (ev == NotificacaoRequestDTO.Evento.ACUMULO) {
+            return Notificacao.Tipo.ACUMULO;
+        } else if (ev == NotificacaoRequestDTO.Evento.EXPIRACAO) {
+            return Notificacao.Tipo.EXPIRACAO;
+        } else if (ev == NotificacaoRequestDTO.Evento.RESGATE) {
+            return Notificacao.Tipo.RESGATE;
+        } else if (ev == NotificacaoRequestDTO.Evento.AJUSTE) {
+            return Notificacao.Tipo.AJUSTE;
+        } else if (ev == NotificacaoRequestDTO.Evento.SISTEMA) {
+            return Notificacao.Tipo.SISTEMA;
+        } else {
+            return null;
+        }
     }
 
     private Notificacao.Tipo parseTipo(String s) {
@@ -340,33 +385,39 @@ public class NotificacaoService {
         dto.createdAt = n.criadoEm;
         dto.scheduledFor = n.agendadoPara;
 
-        switch (n.status) {
-            case AGENDADA   -> dto.status = NotificacaoResponseDTO.Status.AGENDADA;
-            case ENFILEIRADA, RETENTANDO -> dto.status = NotificacaoResponseDTO.Status.ENFILEIRADA;
-            case ENVIADA    -> {
-                dto.status = NotificacaoResponseDTO.Status.ENVIADA;
-                dto.sentAt = (n.enviadoEm != null ? n.enviadoEm : dto.sentAt);
-            }
-            case FALHA      -> {
-                dto.status = NotificacaoResponseDTO.Status.FALHA;
-                dto.failedAt = (n.ultimaTentativaEm != null ? n.ultimaTentativaEm : LocalDateTime.now());
-            }
-            case CANCELADA  -> dto.status = NotificacaoResponseDTO.Status.CANCELADA;
+        if (n.status == Notificacao.Status.AGENDADA) {
+            dto.status = NotificacaoResponseDTO.Status.AGENDADA;
+        } else if (n.status == Notificacao.Status.ENFILEIRADA || n.status == Notificacao.Status.RETENTANDO) {
+            dto.status = NotificacaoResponseDTO.Status.ENFILEIRADA;
+        } else if (n.status == Notificacao.Status.ENVIADA) {
+            dto.status = NotificacaoResponseDTO.Status.ENVIADA;
+            dto.sentAt = (n.enviadoEm != null ? n.enviadoEm : dto.sentAt);
+        } else if (n.status == Notificacao.Status.FALHA) {
+            dto.status = NotificacaoResponseDTO.Status.FALHA;
+            dto.failedAt = (n.ultimaTentativaEm != null ? n.ultimaTentativaEm : LocalDateTime.now());
+        } else if (n.status == Notificacao.Status.CANCELADA) {
+            dto.status = NotificacaoResponseDTO.Status.CANCELADA;
         }
 
         NotificacaoResponseDTO.CanalResultado canal = new NotificacaoResponseDTO.CanalResultado();
-        canal.canal = switch (n.canal) {
-            case EMAIL -> NotificacaoResponseDTO.CanalResultado.Canal.EMAIL;
-            case SMS   -> NotificacaoResponseDTO.CanalResultado.Canal.SMS;
-            case PUSH, WEBHOOK -> NotificacaoResponseDTO.CanalResultado.Canal.PUSH;
-        };
-        canal.status = switch (n.status) {
-            case AGENDADA   -> NotificacaoResponseDTO.CanalResultado.CanalStatus.AGENDADA;
-            case ENFILEIRADA, RETENTANDO -> NotificacaoResponseDTO.CanalResultado.CanalStatus.ENFILEIRADA;
-            case ENVIADA    -> NotificacaoResponseDTO.CanalResultado.CanalStatus.ENVIADA;
-            case FALHA      -> NotificacaoResponseDTO.CanalResultado.CanalStatus.FALHA;
-            case CANCELADA  -> NotificacaoResponseDTO.CanalResultado.CanalStatus.CANCELADA;
-        };
+        if (n.canal == Notificacao.Canal.EMAIL) {
+            canal.canal = NotificacaoResponseDTO.CanalResultado.Canal.EMAIL;
+        } else if (n.canal == Notificacao.Canal.SMS) {
+            canal.canal = NotificacaoResponseDTO.CanalResultado.Canal.SMS;
+        } else if (n.canal == Notificacao.Canal.PUSH || n.canal == Notificacao.Canal.WEBHOOK) {
+            canal.canal = NotificacaoResponseDTO.CanalResultado.Canal.PUSH;
+        }
+        if (n.status == Notificacao.Status.AGENDADA) {
+            canal.status = NotificacaoResponseDTO.CanalResultado.CanalStatus.AGENDADA;
+        } else if (n.status == Notificacao.Status.ENFILEIRADA || n.status == Notificacao.Status.RETENTANDO) {
+            canal.status = NotificacaoResponseDTO.CanalResultado.CanalStatus.ENFILEIRADA;
+        } else if (n.status == Notificacao.Status.ENVIADA) {
+            canal.status = NotificacaoResponseDTO.CanalResultado.CanalStatus.ENVIADA;
+        } else if (n.status == Notificacao.Status.FALHA) {
+            canal.status = NotificacaoResponseDTO.CanalResultado.CanalStatus.FALHA;
+        } else if (n.status == Notificacao.Status.CANCELADA) {
+            canal.status = NotificacaoResponseDTO.CanalResultado.CanalStatus.CANCELADA;
+        }
         canal.provider = n.provider;
         canal.providerMessageId = n.providerMessageId;
         canal.attempts = n.tentativas;
@@ -377,6 +428,27 @@ public class NotificacaoService {
 
         dto.canais = List.of(canal);
         dto.recomputeTotals();
+        return dto;
+    }
+
+    private ConfiguracaoNotificacaoDTO convertToDTO(ConfiguracaoNotificacao config) {
+        ConfiguracaoNotificacaoDTO dto = new ConfiguracaoNotificacaoDTO();
+        dto.usuarioId = config.usuario.id;
+        dto.emailAtivo = config.emailAtivo;
+        dto.smsAtivo = config.smsAtivo;
+        dto.pushAtivo = config.pushAtivo;
+        dto.notificarAcumulo = config.notificarAcumulo;
+        dto.notificarExpiracao = config.notificarExpiracao;
+        dto.notificarResgate = config.notificarResgate;
+        dto.notificarCampanha = config.notificarCampanha;
+        dto.limiteMinimoPontosNotificar = config.limiteMinimoPontosNotificar;
+        dto.idiomaPreferido = config.idiomaPreferido;
+        dto.timezone = config.timezone;
+        dto.silencioInicio = config.silencioInicio;
+        dto.silencioFim = config.silencioFim;
+        if (config.digest != null) {
+            dto.digest = ConfiguracaoNotificacaoDTO.DigestFrequency.valueOf(config.digest.name());
+        }
         return dto;
     }
 }

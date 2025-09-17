@@ -1,0 +1,68 @@
+package br.com.caioacn.validapontos.repository;
+
+import jaka
+import java.util.List;
+import java.util.Optional;
+
+import br.com.caioacn.validapontos.model.Cartao;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
+import io.quarkus.panache.common.Page;
+
+@ApplicationScoped
+public class CartaoRepository implements PanacheRepositoryBase<Cartao, Long> {
+
+    /** Busca o cartão pelo número (único). */
+    public Optional<Cartao> findByNumero(String numero) {
+        return find("numero = ?1", numero).firstResultOptional();
+    }
+
+    /** Verifica se já existe um cartão com o número informado, ignorando um ID específico (para updates). */
+    public boolean existsNumero(String numero, Long ignoreId) {
+        if (ignoreId == null) {
+            return count("numero = ?1", numero) > 0;
+        }
+        return count("numero = ?1 and id <> ?2", numero, ignoreId) > 0;
+    }
+
+    /** Busca por ID já carregando o usuário (evita N+1 ao mapear para DTO). */
+    public Cartao findByIdWithUsuario(Long id) {
+        return find("select c from Cartao c left join fetch c.usuario where c.id = ?1", id)
+                .firstResult();
+    }
+
+    /** Lista cartões de um usuário específico (ordenado). */
+    public List<Cartao> listByUsuario(Long idUsuario) {
+        return list("usuario.id = ?1 order by id", idUsuario);
+    }
+
+    /** Lista paginada simples com ordenação determinística. */
+    public List<Cartao> listPaged(int page, int size) {
+        return find("order by id")
+                .page(Page.of(Math.max(0, page), Math.max(1, size)))
+                .list();
+    }
+
+    /** Lista paginada já com usuário carregado (ótimo para mapper evitar N+1). */
+    public List<Cartao> listPagedWithUsuario(int page, int size) {
+        return find("select distinct c from Cartao c left join fetch c.usuario order by c.id")
+                .page(Page.of(Math.max(0, page), Math.max(1, size)))
+                .list();
+    }
+
+    /** Lista paginada por usuário (útil para telas de detalhe). */
+    public List<Cartao> listByUsuarioPaged(Long idUsuario, int page, int size) {
+        return find("select c from Cartao c where c.usuario.id = ?1 order by c.id", idUsuario)
+                .page(Page.of(Math.max(0, page), Math.max(1, size)))
+                .list();
+    }
+
+    /** Total geral para montar metadados da paginação. */
+    public long countAll() {
+        return count();
+    }
+
+    /** Total por usuário (para paginação filtrada). */
+    public long countByUsuario(Long idUsuario) {
+        return count("usuario.id = ?1", idUsuario);
+    }
+}

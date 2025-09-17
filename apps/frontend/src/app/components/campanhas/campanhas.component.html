@@ -1,4 +1,22 @@
 <div class="campanhas-container">
+  <!-- Notificação -->
+  <div *ngIf="notificacao" class="notificacao" [ngClass]="'notificacao-' + notificacao.tipo">
+    <span>{{ notificacao.mensagem }}</span>
+    <button class="btn-close" (click)="fecharNotificacao()">&times;</button>
+  </div>
+
+  <!-- Modal de Confirmação -->
+  <div *ngIf="modalConfirmacao" class="modal-overlay">
+    <div class="modal-confirmacao">
+      <h3>Confirmação</h3>
+      <p>{{ modalConfirmacao.mensagem }}</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="cancelarAcao()">Cancelar</button>
+        <button class="btn btn-danger" (click)="confirmarAcao()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="header">
     <h2>Campanhas de Bônus</h2>
     <button 
@@ -27,8 +45,8 @@
       <label for="filtro-ativo">Status:</label>
       <select id="filtro-ativo" [(ngModel)]="filtros.ativo">
         <option value="">Todos</option>
-        <option [value]="true">Ativas</option>
-        <option [value]="false">Inativas</option>
+        <option value="true">Ativas</option>
+        <option value="false">Inativas</option>
       </select>
     </div>
 
@@ -36,8 +54,8 @@
       <label for="filtro-vigente">Vigência:</label>
       <select id="filtro-vigente" [(ngModel)]="filtros.vigente">
         <option value="">Todas</option>
-        <option [value]="true">Vigentes</option>
-        <option [value]="false">Não Vigentes</option>
+        <option value="true">Vigentes</option>
+        <option value="false">Não Vigentes</option>
       </select>
     </div>
 

@@ -1,4 +1,4 @@
-// Dashboard Models
+// Painel Models
 export * from './dashboard.model';
 
 // Transação Models

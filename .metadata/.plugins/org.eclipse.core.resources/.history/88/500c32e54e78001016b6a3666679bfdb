@@ -1,0 +1,160 @@
+package br.com.caioacn.validapontos.resource;
+
+import br.com.caioacn.validapontos.dto.CartaoDTO;
+import br.com.caioacn.validapontos.service.CartaoService;
+import io.quarkus.test.junit.QuarkusMock;
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.net.URI;
+import java.util.Arrays;
+import java.util.List;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * Testes de integração do CartaoResource.
+ * Usa QuarkusMock para injetar um mock de CartaoService.
+ */
+@QuarkusTest
+class CartaoResourceIT {
+
+    private CartaoService serviceMock;
+
+    @BeforeEach
+    void setUp() {
+        serviceMock = Mockito.mock(CartaoService.class);
+        // Instala o mock no CDI para que o Resource receba este mock
+        QuarkusMock.installMockForType(serviceMock, CartaoService.class);
+    }
+
+    @Test
+    void deveBuscarPorId_eRetornar200_comDTO() {
+        CartaoDTO dto = new CartaoDTO();
+        // Campos comuns do seu DTO (com base no seu mapper)
+        dto.id = 1L;
+        dto.numero = "4111111111111111";
+        dto.nomeImpresso = "CAIO NUNES";
+        dto.validade = "12/28";
+        dto.limite = java.math.BigDecimal.valueOf(1000);
+        dto.idUsuario = 10L;
+
+        when(serviceMock.buscarPorId(1L)).thenReturn(dto);
+
+        given()
+        .when()
+            .get("/cartoes/{id}", 1)
+        .then()
+            .statusCode(200)
+            .body("id", is(1))
+            .body("numero", is("4111111111111111"))
+            .body("nomeImpresso", is("CAIO NUNES"))
+            .body("idUsuario", is(10));
+        
+        verify(serviceMock).buscarPorId(1L);
+    }
+
+    @Test
+    void deveListarPorUsuario_eRetornar200_comLista() {
+        CartaoDTO c1 = new CartaoDTO(); c1.id = 1L; c1.numero = "4111"; c1.nomeImpresso = "A"; c1.idUsuario = 10L;
+        CartaoDTO c2 = new CartaoDTO(); c2.id = 2L; c2.numero = "4222"; c2.nomeImpresso = "B"; c2.idUsuario = 10L;
+        List<CartaoDTO> lista = Arrays.asList(c1, c2);
+
+        when(serviceMock.listarPorUsuario(10L)).thenReturn(lista);
+
+        given()
+        .when()
+            .get("/cartoes/usuario/{idUsuario}", 10)
+        .then()
+            .statusCode(200)
+            .body("", hasSize(2))
+            .body("[0].id", is(1))
+            .body("[1].id", is(2));
+
+        verify(serviceMock).listarPorUsuario(10L);
+    }
+
+    @Test
+    void deveCriar_eRetornar201_comLocation() {
+        when(serviceMock.salvar(any(CartaoDTO.class))).thenReturn(123L);
+
+        // JSON com campos típicos do seu DTO; ajuste se necessário
+        String json =
+            "{"
+                + "\"numero\":\"4111111111111111\","
+                + "\"nomeImpresso\":\"CAIO NUNES\","
+                + "\"validade\":\"12/28\","
+                + "\"limite\":1000.00,"
+                + "\"idUsuario\":10"
+            + "}";
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(json)
+        .when()
+            .post("/cartoes")
+        .then()
+            .statusCode(201)
+            // Não travar no host/porta: confere apenas o sufixo do Location
+            .header("Location", endsWith("/cartoes/123"));
+
+        verify(serviceMock).salvar(any(CartaoDTO.class));
+    }
+
+    @Test
+    void deveAtualizar_eRetornar204() {
+        doNothing().when(serviceMock).atualizar(eq(5L), any(CartaoDTO.class));
+
+        String json =
+            "{"
+                + "\"numero\":\"4222222222222222\","
+                + "\"nomeImpresso\":\"CAIO N.\","
+                + "\"validade\":\"01/30\","
+                + "\"limite\":1500.00,"
+                + "\"idUsuario\":10"
+            + "}";
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(json)
+        .when()
+            .put("/cartoes/{id}", 5)
+        .then()
+            .statusCode(204);
+
+        verify(serviceMock).atualizar(eq(5L), any(CartaoDTO.class));
+    }
+
+    @Test
+    void deveDeletar_eRetornar204() {
+        doNothing().when(serviceMock).deletar(7L);
+
+        given()
+        .when()
+            .delete("/cartoes/{id}", 7)
+        .then()
+            .statusCode(204);
+
+        verify(serviceMock).deletar(7L);
+    }
+
+    @Test
+    void deveListarSemParametros_eChamarServiceComDefault_eRetornar204Ou200() {
+        // Se o service retornar null, o JAX-RS tende a devolver 204 (No Content).
+        when(serviceMock.listar(0, 10)).thenReturn(null);
+
+        given()
+        .when()
+            .get("/cartoes")
+        .then()
+            .statusCode(anyOf(is(200), is(204)));
+
+        verify(serviceMock).listar(0, 10);
+    }
+}

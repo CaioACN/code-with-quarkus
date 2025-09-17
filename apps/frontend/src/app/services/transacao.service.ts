@@ -53,9 +53,9 @@ export class TransacaoService {
     if (filtros) {
       if (filtros.usuarioId) params = params.set('usuarioId', filtros.usuarioId.toString());
       if (filtros.cartaoId) params = params.set('cartaoId', filtros.cartaoId.toString());
-      if (filtros.status) params = params.set('status', filtros.status);
-      if (filtros.dataInicio) params = params.set('dataInicio', filtros.dataInicio);
-      if (filtros.dataFim) params = params.set('dataFim', filtros.dataFim);
+      if (filtros.status && filtros.status.trim() !== '') params = params.set('status', filtros.status);
+      if (filtros.dataInicio && filtros.dataInicio.trim() !== '') params = params.set('dataInicio', filtros.dataInicio);
+      if (filtros.dataFim && filtros.dataFim.trim() !== '') params = params.set('dataFim', filtros.dataFim);
     }
 
     return this.http.get<SuccessResponse<PageResponseDTO<TransacaoResponseDTO>>>(this.baseUrl, { params });
@@ -94,8 +94,8 @@ export class TransacaoService {
 
     if (filtros) {
       if (filtros.cartaoId) params = params.set('cartaoId', filtros.cartaoId.toString());
-      if (filtros.dataInicio) params = params.set('dataInicio', filtros.dataInicio);
-      if (filtros.dataFim) params = params.set('dataFim', filtros.dataFim);
+      if (filtros.dataInicio && filtros.dataInicio.trim() !== '') params = params.set('dataInicio', filtros.dataInicio);
+      if (filtros.dataFim && filtros.dataFim.trim() !== '') params = params.set('dataFim', filtros.dataFim);
     }
 
     return this.http.get<SuccessResponse<PageResponseDTO<ExtratoTransacaoDTO>>>(

@@ -1,0 +1,171 @@
+package br.com.caioacn.validapontos.resource;
+
+import br.com.caioacn.validapontos.dto.CartaoDTO;
+import br.com.caioacn.validapontos.dto.PageResponse;
+import br.com.caioacn.validapontos.service.CartaoService;
+import io.quarkus.test.junit.QuarkusMock;
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import static io.restassured.RestAssured.given;
+// ✅ Hamcrest: importe apenas o que usa (evita conflito com any())
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.allOf;
+// ✅ Mockito: importe explicitamente os matchers que usa
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@QuarkusTest
+class CartaoResourceIT {
+
+    private CartaoService serviceMock;
+
+    @BeforeEach
+    void setUp() {
+        serviceMock = mock(CartaoService.class);
+        QuarkusMock.installMockForType(serviceMock, CartaoService.class);
+    }
+
+    private static CartaoDTO dto(long id, String numero, String nome, long idUsuario, BigDecimal limite) {
+        return new CartaoDTO(
+                id,
+                numero,
+                nome,
+                LocalDate.parse("2028-01-01"),
+                limite,
+                idUsuario
+        );
+    }
+
+    @Test
+    void listar_deveRetornar200_comPageResponse() {
+        var itens = List.of(
+            dto(1L, "4111111111111111", "A", 10L, BigDecimal.valueOf(1000)),
+            dto(2L, "4222222222222222", "B", 10L, BigDecimal.valueOf(2000))
+        );
+        PageResponse<CartaoDTO> page = new PageResponse<>(itens, 0, 10, 2L, 1, false, false);
+        when(serviceMock.listar(0, 10)).thenReturn(page);
+
+        given()
+        .when()
+            .get("/cartoes?page=0&size=10")
+        .then()
+            .statusCode(200)
+            .body("items.size()", is(2))
+            .body("page", is(0))
+            .body("size", is(10))
+            .body("totalElements", is(2))
+            .body("totalPages", is(1))
+            .body("hasNext", is(false))
+            .body("hasPrevious", is(false));
+
+        verify(serviceMock).listar(0, 10);
+    }
+
+    @Test
+    void buscarPorId_deveRetornar200_comDTO() {
+        when(serviceMock.buscarPorId(5L))
+            .thenReturn(dto(5L, "4333333333333333", "CAIO", 77L, BigDecimal.valueOf(500)));
+
+        given()
+        .when()
+            .get("/cartoes/{id}", 5)
+        .then()
+            .statusCode(200)
+            .body("id", is(5))
+            .body("numero", is("4333333333333333"))
+            .body("idUsuario", is(77));
+
+        verify(serviceMock).buscarPorId(5L);
+    }
+
+    @Test
+    void listarPorUsuario_deveRetornar200_comLista() {
+        when(serviceMock.listarPorUsuario(77L))
+            .thenReturn(List.of(
+                dto(1L, "4111", "X", 77L, BigDecimal.valueOf(100)),
+                dto(2L, "4222", "Y", 77L, BigDecimal.valueOf(200))
+            ));
+
+        given()
+        .when()
+            .get("/cartoes/usuario/{idUsuario}", 77)
+        .then()
+            .statusCode(200)
+            .body("size()", is(2))
+            .body("[0].idUsuario", is(77))
+            .body("[1].idUsuario", is(77));
+
+        verify(serviceMock).listarPorUsuario(77L);
+    }
+
+    @Test
+    void criar_deveRetornar201_comLocation() {
+        when(serviceMock.salvar(any(CartaoDTO.class))).thenReturn(123L);
+
+        String body = "{"
+            + "\"numero\":\"5555444433331111\","
+            + "\"nomeImpresso\":\"CAIO A C NUNES\","
+            + "\"validade\":\"2028-01-01\","
+            + "\"limite\":5000.00,"
+            + "\"idUsuario\":10"
+            + "}";
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(body)
+        .when()
+            .post("/cartoes")
+        .then()
+            .statusCode(201)
+            .header("Location", allOf(notNullValue(), endsWith("/cartoes/123")));
+
+        verify(serviceMock).salvar(any(CartaoDTO.class));
+    }
+
+    @Test
+    void atualizar_deveRetornar204() {
+        doNothing().when(serviceMock).atualizar(eq(9L), any(CartaoDTO.class));
+
+        String body = "{"
+            + "\"numero\":\"4666666666666666\","
+            + "\"nomeImpresso\":\"NOVO NOME\","
+            + "\"validade\":\"2029-12-01\","
+            + "\"limite\":777.77,"
+            + "\"idUsuario\":10"
+            + "}";
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(body)
+        .when()
+            .put("/cartoes/{id}", 9)
+        .then()
+            .statusCode(204);
+
+        verify(serviceMock).atualizar(eq(9L), any(CartaoDTO.class));
+    }
+
+    @Test
+    void deletar_deveRetornar204() {
+        doNothing().when(serviceMock).deletar(11L);
+
+        given()
+        .when()
+            .delete("/cartoes/{id}", 11)
+        .then()
+            .statusCode(204);
+
+        verify(serviceMock).deletar(11L);
+    }
+}

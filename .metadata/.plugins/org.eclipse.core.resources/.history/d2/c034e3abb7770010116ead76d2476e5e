@@ -1,0 +1,38 @@
+# ----------------------------
+# DESATIVAR DEV SERVICES
+# ----------------------------
+quarkus.devservices.enabled=false
+quarkus.datasource.devservices.enabled=false
+
+# ----------------------------
+# DATASOURCE (perfil padrão)
+# ----------------------------
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.username=postgres
+quarkus.datasource.password=postgres
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+
+# ----------------------------
+# HIBERNATE ORM (Q3)
+# ----------------------------
+# Se quiser criar/drop na inicialização enquanto desenvolve:
+quarkus.hibernate-orm.database.generation=drop-and-create
+quarkus.hibernate-orm.sql-load-script=no-file
+quarkus.hibernate-orm.log.sql=false
+quarkus.hibernate-orm.log.format-sql=false
+
+# ----------------------------
+# TEST PROFILE
+# ----------------------------
+%test.quarkus.devservices.enabled=false
+%test.quarkus.datasource.devservices.enabled=false
+
+%test.quarkus.datasource.db-kind=postgresql
+%test.quarkus.datasource.username=postgres
+%test.quarkus.datasource.password=postgres
+%test.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+
+%test.quarkus.hibernate-orm.database.generation=drop-and-create
+%test.quarkus.hibernate-orm.sql-load-script=no-file
+%test.quarkus.hibernate-orm.log.sql=false
+%test.quarkus.hibernate-orm.log.format-sql=false

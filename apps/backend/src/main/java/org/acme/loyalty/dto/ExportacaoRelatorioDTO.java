@@ -199,23 +199,33 @@ public class ExportacaoRelatorioDTO {
 
     public static String mediaTypeFor(String formato) {
         if (formato == null) return "application/octet-stream";
-        switch (formato.toLowerCase(Locale.ROOT)) {
-            case "csv":  return "text/csv";
-            case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            case "json": return "application/json";
-            case "pdf":  return "application/pdf";
-            default:     return "application/octet-stream";
+        String lowerFormato = formato.toLowerCase(Locale.ROOT);
+        if ("csv".equals(lowerFormato)) {
+            return "text/csv";
+        } else if ("xlsx".equals(lowerFormato)) {
+            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        } else if ("json".equals(lowerFormato)) {
+            return "application/json";
+        } else if ("pdf".equals(lowerFormato)) {
+            return "application/pdf";
+        } else {
+            return "application/octet-stream";
         }
     }
 
     public static String extensionFor(String formato) {
         if (formato == null) return "bin";
-        switch (formato.toLowerCase(Locale.ROOT)) {
-            case "csv":  return "csv";
-            case "xlsx": return "xlsx";
-            case "json": return "json";
-            case "pdf":  return "pdf";
-            default:     return "bin";
+        String lowerFormato = formato.toLowerCase(Locale.ROOT);
+        if ("csv".equals(lowerFormato)) {
+            return "csv";
+        } else if ("xlsx".equals(lowerFormato)) {
+            return "xlsx";
+        } else if ("json".equals(lowerFormato)) {
+            return "json";
+        } else if ("pdf".equals(lowerFormato)) {
+            return "pdf";
+        } else {
+            return "bin";
         }
     }
 

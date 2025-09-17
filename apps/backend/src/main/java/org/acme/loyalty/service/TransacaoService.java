@@ -4,11 +4,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import org.acme.loyalty.dto.PageResponseDTO;
 import org.acme.loyalty.dto.TransacaoRequestDTO;
 import org.acme.loyalty.dto.TransacaoResponseDTO;
 import org.acme.loyalty.dto.event.TransactionCreatedEvent;
 import org.acme.loyalty.entity.Cartao;
 import org.acme.loyalty.entity.Transacao;
+import org.acme.loyalty.entity.Transacao.StatusTransacao;
 import org.acme.loyalty.entity.Usuario;
 import org.acme.loyalty.repository.CartaoRepository;
 import org.acme.loyalty.repository.TransacaoRepository;
@@ -34,6 +36,10 @@ public class TransacaoService {
 
     @Inject
     EventPublisherService eventPublisherService;
+
+    // Construtor sem argumentos necessário para proxy CDI
+    public TransacaoService() {
+    }
 
     // ===================== Criação =====================
 
@@ -68,10 +74,15 @@ public class TransacaoService {
 
         // Criar nova transação
         Transacao tx = request.toEntity(cartao, usuario);
-        tx.status = Transacao.StatusTransacao.APROVADA; // Conforme regra 17.3
+        tx.status = StatusTransacao.APROVADA; // Conforme regra 17.3
         tx.processadoEm = null; // será processada posteriormente
 
         transacaoRepository.persist(tx);
+        transacaoRepository.flush(); // Força a sincronização com o banco
+        
+        // Recarrega a entidade com as relações usando JOIN FETCH
+        tx = transacaoRepository.findWithCartaoAndUsuario(tx.id)
+                .orElseThrow(() -> new RuntimeException("Erro ao recarregar transação"));
 
         // Evento de domínio
         TransactionCreatedEvent event = new TransactionCreatedEvent(
@@ -85,30 +96,44 @@ public class TransacaoService {
 
     // ===================== Consulta =====================
 
-    public List<TransacaoResponseDTO> listarTransacoes(Long usuarioId,
-                                                       Long cartaoId,
-                                                       String status,
-                                                       String dataInicio,
-                                                       String dataFim,
-                                                       Integer pagina,
-                                                       Integer tamanho) {
+    public PageResponseDTO<TransacaoResponseDTO> listarTransacoes(Long usuarioId,
+                                                                    Long cartaoId,
+                                                                    String status,
+                                                                    String dataInicio,
+                                                                    String dataFim,
+                                                                    Integer pagina,
+                                                                    Integer tamanho) {
 
         int pageIndex = (pagina == null || pagina < 1) ? 0 : (pagina - 1);
         int pageSize  = (tamanho == null || tamanho < 1) ? 20 : tamanho;
 
-        Transacao.StatusTransacao statusEnum = parseStatus(status);
+        StatusTransacao statusEnum = parseStatus(status);
         LocalDateTime ini = parseDateTimeNullable(dataInicio);
         LocalDateTime fim = parseDateTimeNullable(dataFim);
 
+        // Buscar dados paginados
         List<Transacao> lista = transacaoRepository
                 .queryAvancada(usuarioId, cartaoId, null, null, statusEnum, ini, fim, pageIndex, pageSize)
                 .list();
 
-        return lista.stream().map(this::toTransacaoResponseDTO).collect(Collectors.toList());
+        // Contar total de elementos
+        long totalElements = transacaoRepository
+                .queryAvancadaCount(usuarioId, cartaoId, null, null, statusEnum, ini, fim);
+
+        List<TransacaoResponseDTO> content = lista.stream()
+                .map(this::toTransacaoResponseDTO)
+                .collect(Collectors.toList());
+
+        return PageResponseDTO.of(
+                content,
+                totalElements,
+                tamanho,
+                pagina - 1
+        );
     }
 
     public TransacaoResponseDTO buscarTransacaoPorId(Long id) {
-        return transacaoRepository.findByIdOptional(id)
+        return transacaoRepository.findWithCartaoAndUsuario(id)
                 .map(this::toTransacaoResponseDTO)
                 .orElse(null);
     }
@@ -120,7 +145,7 @@ public class TransacaoService {
         Transacao tx = transacaoRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
 
-        Transacao.StatusTransacao novo = parseStatusOrThrow(novoStatus);
+        StatusTransacao novo = parseStatusOrThrow(novoStatus);
 
         if (!isValidStatusTransition(tx.status, novo)) {
             throw new IllegalArgumentException("Transição de status inválida: " + tx.status + " -> " + novo);
@@ -140,7 +165,7 @@ public class TransacaoService {
         Transacao tx = transacaoRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Transação não encontrada: " + id));
 
-        if (tx.status != Transacao.StatusTransacao.APROVADA) {
+        if (tx.status != StatusTransacao.APROVADA) {
             throw new IllegalArgumentException("Apenas transações aprovadas podem ser deletadas");
         }
 
@@ -159,7 +184,7 @@ public class TransacaoService {
         }
         
         // Marcar como estornada
-        tx.status = Transacao.StatusTransacao.ESTORNADA;
+        tx.status = StatusTransacao.ESTORNADA;
         tx.processadoEm = LocalDateTime.now();
         
         transacaoRepository.persist(tx);
@@ -201,18 +226,18 @@ public class TransacaoService {
         }
     }
 
-    private Transacao.StatusTransacao parseStatus(String s) {
+    private StatusTransacao parseStatus(String s) {
         if (s == null || s.isBlank()) return null;
         try {
-            return Transacao.StatusTransacao.valueOf(s.trim().toUpperCase(Locale.ROOT));
+            return StatusTransacao.valueOf(s.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             return null; // status inválido → ignora filtro
         }
     }
 
-    private Transacao.StatusTransacao parseStatusOrThrow(String s) {
+    private StatusTransacao parseStatusOrThrow(String s) {
         try {
-            return Transacao.StatusTransacao.valueOf(s.trim().toUpperCase(Locale.ROOT));
+            return StatusTransacao.valueOf(s.trim().toUpperCase(Locale.ROOT));
         } catch (Exception e) {
             throw new IllegalArgumentException("Status inválido: " + s);
         }
@@ -225,19 +250,19 @@ public class TransacaoService {
      * ESTORNADA  -> (terminal)
      * AJUSTE     -> (terminal)
      */
-    private boolean isValidStatusTransition(Transacao.StatusTransacao atual,
-                                            Transacao.StatusTransacao novo) {
+    private boolean isValidStatusTransition(StatusTransacao atual,
+                                            StatusTransacao novo) {
         if (atual == null || novo == null) return false;
-        switch (atual) {
-            case APROVADA:
-                return (novo == Transacao.StatusTransacao.NEGADA
-                        || novo == Transacao.StatusTransacao.ESTORNADA
-                        || novo == Transacao.StatusTransacao.AJUSTE);
-            case NEGADA:
-            case ESTORNADA:
-            case AJUSTE:
-            default:
-                return false;
+        if (atual == StatusTransacao.APROVADA) {
+            return (novo == StatusTransacao.NEGADA
+                    || novo == StatusTransacao.ESTORNADA
+                    || novo == StatusTransacao.AJUSTE);
+        } else if (atual == StatusTransacao.NEGADA
+                || atual == StatusTransacao.ESTORNADA
+                || atual == StatusTransacao.AJUSTE) {
+            return false;
+        } else {
+            return false;
         }
     }
 }

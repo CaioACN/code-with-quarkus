@@ -22,7 +22,6 @@ import org.jboss.logging.Logger;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
 
 @Path("/transacoes")
 @Produces(MediaType.APPLICATION_JSON)
@@ -50,7 +49,7 @@ public class TransacaoResource {
             LOG.info("Criando transação - cartão: " + request.cartaoId + ", valor: " + request.valor);
             
             Transacao transacao = transacaoService.criarTransacao(request);
-            TransacaoResponseDTO response = new TransacaoResponseDTO(transacao.id);
+            TransacaoResponseDTO response = TransacaoResponseDTO.fromEntity(transacao);
             
             LOG.info("Transação criada com sucesso - ID: " + transacao.id);
             
@@ -115,10 +114,10 @@ public class TransacaoResource {
             parseDate(dataInicio);
             parseDate(dataFim);
             
-            List<TransacaoResponseDTO> transacoes = transacaoService.listarTransacoes(
+            PageResponseDTO<TransacaoResponseDTO> transacoes = transacaoService.listarTransacoes(
                 usuarioId, cartaoId, status, dataInicio, dataFim, pagina, tamanho);
             
-            LOG.info("Transações listadas com sucesso - total: " + transacoes.size());
+            LOG.info("Transações listadas com sucesso - total: " + transacoes.totalElements);
             
             return Response.ok(SuccessResponseDTO.ok("Transações listadas com sucesso", transacoes)).build();
         } catch (DateTimeParseException e) {

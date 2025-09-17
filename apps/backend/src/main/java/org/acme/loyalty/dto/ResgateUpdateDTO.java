@@ -82,18 +82,18 @@ public class ResgateUpdateDTO {
 
         // Transição de status (se informada)
         if (status != null && status != r.status) {
-            switch (status) {
-                case PENDENTE -> r.status = Resgate.StatusResgate.PENDENTE;
-                case APROVADO -> {
-                    // limpa motivo de negação, se houver
-                    r.motivoNegacao = null;
-                    r.aprovar(); // define status=APROVADO e aprovadoEm=now
-                }
-                case CONCLUIDO -> r.concluir(); // define status=CONCLUIDO e concluidoEm=now
-                case NEGADO -> {
-                    r.negar(motivoNegacao); // define status=NEGADO e negadoEm=now
-                }
-                case CANCELADO -> r.cancelar(); // status=CANCELADO
+            if (status == Resgate.StatusResgate.PENDENTE) {
+                r.status = Resgate.StatusResgate.PENDENTE;
+            } else if (status == Resgate.StatusResgate.APROVADO) {
+                // limpa motivo de negação, se houver
+                r.motivoNegacao = null;
+                r.aprovar(); // define status=APROVADO e aprovadoEm=now
+            } else if (status == Resgate.StatusResgate.CONCLUIDO) {
+                r.concluir(); // define status=CONCLUIDO e concluidoEm=now
+            } else if (status == Resgate.StatusResgate.NEGADO) {
+                r.negar(motivoNegacao); // define status=NEGADO e negadoEm=now
+            } else if (status == Resgate.StatusResgate.CANCELADO) {
+                r.cancelar(); // status=CANCELADO
             }
         }
 

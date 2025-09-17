@@ -53,10 +53,12 @@ public class RedeemCompletedEvent {
     }
     
     public String getStatusDescricao() {
-        switch (status) {
-            case "COMPLETED": return "Resgate Concluído";
-            case "NEGADO": return "Resgate Negado";
-            default: return "Status: " + status;
+        if ("COMPLETED".equals(status)) {
+            return "Resgate Concluído";
+        } else if ("NEGADO".equals(status)) {
+            return "Resgate Negado";
+        } else {
+            return "Status: " + status;
         }
     }
 }

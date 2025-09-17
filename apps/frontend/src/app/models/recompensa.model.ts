@@ -57,9 +57,10 @@ export interface ResgateResponseDTO {
   pontosUtilizados: number;
   status: StatusResgate;
   observacoes?: string;
-  dataCriacao: string;
-  dataAprovacao?: string;
-  dataConclusao?: string;
+  criadoEm: string;
+  aprovadoEm?: string;
+  concluidoEm?: string;
+  negadoEm?: string;
   recompensa?: RecompensaResponseDTO;
 }
 

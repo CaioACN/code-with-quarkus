@@ -1,6 +1,6 @@
 package org.acme.loyalty.entity;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import org.hibernate.annotations.Check;
@@ -10,7 +10,13 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "resgate", schema = "loyalty")
 @Check(constraints = "pontos_utilizados > 0 AND status IN ('PENDENTE', 'APROVADO', 'CONCLUIDO', 'NEGADO', 'CANCELADO')")
-public class Resgate extends PanacheEntity {
+@SequenceGenerator(name = "resgate_seq", sequenceName = "loyalty.resgate_id_seq", allocationSize = 1)
+public class Resgate extends PanacheEntityBase {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "resgate_seq")
+    @Column(name = "id")
+    public Long id;
     
     @NotNull(message = "Usuário é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
@@ -168,14 +174,13 @@ public class Resgate extends PanacheEntity {
     public String getStatusDescricao() {
         if (status == null) return "Status Desconhecido";
         
-        switch (this.status) {
-            case PENDENTE: return "Aguardando Aprovação";
-            case APROVADO: return "Aprovado";
-            case CONCLUIDO: return "Concluído";
-            case NEGADO: return "Negado";
-            case CANCELADO: return "Cancelado";
-            default: return "Status Desconhecido";
-        }
+        if (status == StatusResgate.PENDENTE) return "Aguardando Aprovação";
+        if (status == StatusResgate.APROVADO) return "Aprovado";
+        if (status == StatusResgate.CONCLUIDO) return "Concluído";
+        if (status == StatusResgate.NEGADO) return "Negado";
+        if (status == StatusResgate.CANCELADO) return "Cancelado";
+        
+        return "Status Desconhecido";
     }
     
     /**

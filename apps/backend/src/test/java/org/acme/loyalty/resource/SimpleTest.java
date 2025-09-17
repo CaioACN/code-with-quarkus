@@ -18,7 +18,7 @@ class SimpleTest {
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
-            .body("status", is("UP"));
+            .body("data.status", is("UP"));
     }
 
     @Test

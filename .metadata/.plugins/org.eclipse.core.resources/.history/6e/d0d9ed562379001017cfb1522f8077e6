@@ -1,0 +1,19 @@
+# Desliga DevServices (para não criar DB automático)
+quarkus.devservices.enabled=false
+quarkus.datasource.devservices.enabled=false
+
+# BASE (vale para todos os perfis)
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+quarkus.datasource.username=postgres
+quarkus.datasource.password=postgres
+quarkus.hibernate-orm.datasource=default
+
+# Opcional: não mexer no schema enquanto sobe
+quarkus.hibernate-orm.database.generation=none
+
+# Se quiser sobrescrever quando usar -Dquarkus.profile=local
+%local.quarkus.datasource.db-kind=postgresql
+%local.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+%local.quarkus.datasource.username=postgres
+%local.quarkus.datasource.password=postgres

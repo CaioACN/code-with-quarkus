@@ -57,13 +57,18 @@ public class ResgateDTO {
     private String gerarStatusDescricao() {
         if (status == null) return "Status Desconhecido";
         
-        switch (status) {
-            case "PENDENTE": return "Aguardando Aprovação";
-            case "APROVADO": return "Aprovado";
-            case "CONCLUIDO": return "Concluído";
-            case "NEGADO": return "Negado";
-            case "CANCELADO": return "Cancelado";
-            default: return "Status Desconhecido";
+        if ("PENDENTE".equals(status)) {
+            return "Aguardando Aprovação";
+        } else if ("APROVADO".equals(status)) {
+            return "Aprovado";
+        } else if ("CONCLUIDO".equals(status)) {
+            return "Concluído";
+        } else if ("NEGADO".equals(status)) {
+            return "Negado";
+        } else if ("CANCELADO".equals(status)) {
+            return "Cancelado";
+        } else {
+            return "Status Desconhecido";
         }
     }
     

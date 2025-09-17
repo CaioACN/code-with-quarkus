@@ -60,7 +60,7 @@
           
           <div class="data">
             <span class="label">Data do Resgate:</span>
-            <span class="valor">{{ formatarData(resgate.dataCriacao) }}</span>
+            <span class="valor">{{ formatarData(resgate.criadoEm) }}</span>
           </div>
           
           <div class="cartao">
@@ -107,15 +107,15 @@
             </div>
             <div class="info-item">
               <span class="label">Data do Resgate:</span>
-              <span class="value">{{ formatarData(resgateSelecionado.dataCriacao) }}</span>
+              <span class="value">{{ formatarData(resgateSelecionado.criadoEm) }}</span>
             </div>
-            <div class="info-item" *ngIf="resgateSelecionado.dataAprovacao">
+            <div class="info-item" *ngIf="resgateSelecionado.aprovadoEm">
               <span class="label">Data de Aprovação:</span>
-              <span class="value">{{ formatarData(resgateSelecionado.dataAprovacao) }}</span>
+              <span class="value">{{ formatarData(resgateSelecionado.aprovadoEm) }}</span>
             </div>
-            <div class="info-item" *ngIf="resgateSelecionado.dataConclusao">
+            <div class="info-item" *ngIf="resgateSelecionado.concluidoEm">
               <span class="label">Data de Conclusão:</span>
-              <span class="value">{{ formatarData(resgateSelecionado.dataConclusao) }}</span>
+              <span class="value">{{ formatarData(resgateSelecionado.concluidoEm) }}</span>
             </div>
             <div class="info-item" *ngIf="resgateSelecionado.observacoes">
               <span class="label">Observações:</span>

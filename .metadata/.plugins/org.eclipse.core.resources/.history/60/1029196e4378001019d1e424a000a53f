@@ -1,0 +1,53 @@
+# =========================
+# DEV (quarkus:dev)
+# =========================
+%dev.quarkus.devservices.enabled=false
+%dev.quarkus.datasource.devservices.enabled=false
+
+%dev.quarkus.datasource.db-kind=postgresql
+%dev.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+%dev.quarkus.datasource.username=postgres
+%dev.quarkus.datasource.password=postgres
+
+# Schema em DEV: recria a cada start
+%dev.quarkus.hibernate-orm.database.generation=drop-and-create
+%dev.quarkus.hibernate-orm.sql-load-script=no-file
+%dev.quarkus.hibernate-orm.log.sql=false
+%dev.quarkus.hibernate-orm.log.format-sql=false
+
+# =========================
+# PROD (mvn package / run)
+# =========================
+%prod.quarkus.datasource.db-kind=postgresql
+%prod.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+%prod.quarkus.datasource.username=postgres
+%prod.quarkus.datasource.password=postgres
+
+# Em PROD apenas valida o schema existente
+%prod.quarkus.hibernate-orm.database.generation=validate
+%prod.quarkus.hibernate-orm.sql-load-script=no-file
+%prod.quarkus.hibernate-orm.log.sql=false
+%prod.quarkus.hibernate-orm.log.format-sql=false
+
+# =========================
+# TEST (mvn test)
+# =========================
+%test.quarkus.devservices.enabled=false
+%test.quarkus.datasource.devservices.enabled=false
+
+# (opção 1) Testes usando H2 em modo PostgreSQL (independe de container)
+%test.quarkus.datasource.db-kind=h2
+%test.quarkus.datasource.jdbc.url=jdbc:h2:mem:test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+%test.quarkus.hibernate-orm.database.generation=drop-and-create
+
+# (opção 2) Se preferir testar com PostgreSQL local, comente o bloco H2 acima
+# e use o bloco abaixo:
+# %test.quarkus.datasource.db-kind=postgresql
+# %test.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+# %test.quarkus.datasource.username=postgres
+# %test.quarkus.datasource.password=postgres
+# %test.quarkus.hibernate-orm.database.generation=drop-and-create
+
+%test.quarkus.hibernate-orm.sql-load-script=no-file
+%test.quarkus.hibernate-orm.log.sql=false
+%test.quarkus.hibernate-orm.log.format-sql=false

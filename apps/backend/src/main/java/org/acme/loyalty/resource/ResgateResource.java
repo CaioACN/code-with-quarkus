@@ -9,7 +9,6 @@ import org.acme.loyalty.dto.PageResponseDTO;
 import org.acme.loyalty.dto.ResgateRequestDTO;
 import org.acme.loyalty.dto.ResgateResponseDTO;
 import org.acme.loyalty.dto.SuccessResponseDTO;
-import org.acme.loyalty.dto.ErrorResponseDTO;
 import org.acme.loyalty.service.ResgateService;
 
 import java.util.List;

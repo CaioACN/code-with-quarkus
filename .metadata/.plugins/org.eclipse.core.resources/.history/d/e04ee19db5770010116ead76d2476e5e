@@ -1,0 +1,35 @@
+# --- Desligar DevServices ---
+quarkus.devservices.enabled=false
+quarkus.datasource.devservices.enabled=false
+
+# --- HTTP (fixar 8081 se preferir) ---
+quarkus.http.port=8081
+
+# --- Datasource Postgres ---
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+quarkus.datasource.username=postgres
+quarkus.datasource.password=postgres
+
+# --- Hibernate ORM (Quarkus 3) ---
+# continua válido (apenas deprecado). Use se quiser gerar schema em dev:
+quarkus.hibernate-orm.database.generation=drop-and-create
+
+quarkus.hibernate-orm.sql-load-script=no-file
+quarkus.hibernate-orm.log.sql=false
+quarkus.hibernate-orm.log.format-sql=false
+
+# --- Testes (opcional: silenciar continuous testing / testcontainers em dev) ---
+quarkus.test.continuous-testing=disabled
+
+# --- Perfil de teste, se usar testes com DB local ---
+%test.quarkus.devservices.enabled=false
+%test.quarkus.datasource.devservices.enabled=false
+%test.quarkus.datasource.db-kind=postgresql
+%test.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+%test.quarkus.datasource.username=postgres
+%test.quarkus.datasource.password=postgres
+%test.quarkus.hibernate-orm.database.generation=drop-and-create
+%test.quarkus.hibernate-orm.sql-load-script=no-file
+%test.quarkus.hibernate-orm.log.sql=false
+%test.quarkus.hibernate-orm.log.format-sql=false

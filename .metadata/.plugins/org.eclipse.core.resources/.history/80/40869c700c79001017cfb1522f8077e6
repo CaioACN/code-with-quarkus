@@ -1,0 +1,26 @@
+# =========================
+# TEST (mvn test)
+# =========================
+# Use H2 em memória
+quarkus.datasource.enabled=true
+quarkus.datasource.db-kind=h2
+quarkus.datasource.jdbc.url=jdbc:h2:mem:meubanco;DB_CLOSE_DELAY=-1
+quarkus.datasource.username=sa
+quarkus.datasource.password=sa
+quarkus.datasource.jdbc.driver=org.h2.Driver
+
+# ORM em teste
+quarkus.hibernate-orm.datasource=default
+quarkus.hibernate-orm.database.generation=drop-and-create
+quarkus.hibernate-orm.sql-load-script=no-file
+quarkus.hibernate-orm.log.sql=false
+quarkus.hibernate-orm.log.format-sql=false
+
+# Desativa Dev Services em testes (evita interferência)
+quarkus.devservices.enabled=false
+quarkus.datasource.devservices.enabled=false
+
+
+# (opcional) console H2
+quarkus.h2.console.enabled=true
+quarkus.h2.console.path=/h2

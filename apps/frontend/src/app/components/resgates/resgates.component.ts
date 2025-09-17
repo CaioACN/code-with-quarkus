@@ -18,7 +18,7 @@ import { SaldoUsuarioDTO } from '../../models/pontos.model';
 export class ResgatesComponent implements OnInit, OnDestroy {
   resgates: ResgateResponseDTO[] = [];
   saldoUsuario: SaldoUsuarioDTO | null = null;
-  usuarioId: number = 1; // Em uma aplicação real, viria da autenticação
+  usuarioId: number = 4; // Em uma aplicação real, viria da autenticação
   
   resgateSelecionado: ResgateResponseDTO | null = null;
   cartaoId: number | null = null;
@@ -106,8 +106,27 @@ export class ResgatesComponent implements OnInit, OnDestroy {
     return statusMap[status] || status;
   }
 
-  formatarData(data: string): string {
-    return new Date(data).toLocaleDateString('pt-BR');
+  formatarData(data: string | null | undefined): string {
+    if (!data) {
+      return 'Data não informada';
+    }
+    
+    try {
+      const date = new Date(data);
+      if (isNaN(date.getTime())) {
+        return 'Data inválida';
+      }
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error, 'Data recebida:', data);
+      return 'Erro na data';
+    }
   }
 
   getSaldoTotal(): number {

@@ -195,22 +195,28 @@ public class RelatorioTransacoesDTO {
         b.quantidade++;
         b.valor = b.valor.add(v);
         b.pontosGerados += pts;
-        switch (status) {
-            case PENDENTE -> b.pendentes++;
-            case PROCESSADA -> b.processadas++;
-            case REJEITADA -> b.rejeitadas++;
-            case ESTORNADA -> b.estornadas++;
+        if (status == StatusTransacao.PENDENTE) {
+            b.pendentes++;
+        } else if (status == StatusTransacao.PROCESSADA) {
+            b.processadas++;
+        } else if (status == StatusTransacao.REJEITADA) {
+            b.rejeitadas++;
+        } else if (status == StatusTransacao.ESTORNADA) {
+            b.estornadas++;
         }
 
         // Totais
         totais.quantidade++;
         totais.valorTotal = totais.valorTotal.add(v);
         totais.pontosGerados += pts;
-        switch (status) {
-            case PENDENTE -> totais.pendentes++;
-            case PROCESSADA -> totais.processadas++;
-            case REJEITADA -> totais.rejeitadas++;
-            case ESTORNADA -> totais.estornadas++;
+        if (status == StatusTransacao.PENDENTE) {
+            totais.pendentes++;
+        } else if (status == StatusTransacao.PROCESSADA) {
+            totais.processadas++;
+        } else if (status == StatusTransacao.REJEITADA) {
+            totais.rejeitadas++;
+        } else if (status == StatusTransacao.ESTORNADA) {
+            totais.estornadas++;
         }
 
         // Top-N MCC

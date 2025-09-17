@@ -1,6 +1,6 @@
 package org.acme.loyalty.entity;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import org.hibernate.annotations.Check;
@@ -9,8 +9,14 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "movimento_pontos", schema = "loyalty")
+@SequenceGenerator(name = "movimento_pontos_seq", sequenceName = "loyalty.movimento_pontos_id_seq", allocationSize = 1)
 @Check(constraints = "pontos <> 0 AND tipo IN ('ACUMULO', 'EXPIRACAO', 'RESGATE', 'ESTORNO', 'AJUSTE')")
-public class MovimentoPontos extends PanacheEntity {
+public class MovimentoPontos extends PanacheEntityBase {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "movimento_pontos_seq")
+    @Column(name = "id")
+    public Long id;
     
     @NotNull(message = "Usuário é obrigatório")
     @ManyToOne(fetch = FetchType.LAZY)
@@ -147,13 +153,18 @@ public class MovimentoPontos extends PanacheEntity {
     public String getDescricaoTipo() {
         if (tipo == null) return "Movimento de pontos";
         
-        switch (this.tipo) {
-            case ACUMULO: return "Acúmulo de pontos";
-            case EXPIRACAO: return "Expiração de pontos";
-            case RESGATE: return "Resgate de pontos";
-            case ESTORNO: return "Estorno de pontos";
-            case AJUSTE: return "Ajuste de pontos";
-            default: return "Movimento de pontos";
+        if (this.tipo == TipoMovimento.ACUMULO) {
+            return "Acúmulo de pontos";
+        } else if (this.tipo == TipoMovimento.EXPIRACAO) {
+            return "Expiração de pontos";
+        } else if (this.tipo == TipoMovimento.RESGATE) {
+            return "Resgate de pontos";
+        } else if (this.tipo == TipoMovimento.ESTORNO) {
+            return "Estorno de pontos";
+        } else if (this.tipo == TipoMovimento.AJUSTE) {
+            return "Ajuste de pontos";
+        } else {
+            return "Movimento de pontos";
         }
     }
     

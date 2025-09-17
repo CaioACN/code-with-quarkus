@@ -33,6 +33,10 @@ public class EventPublisherService {
 
     @Inject ObjectMapper objectMapper; // fornecido por quarkus-rest-jackson
 
+    // Construtor sem argumentos necessário para proxy CDI
+    public EventPublisherService() {
+    }
+
     // ============================ Publicação genérica ============================
 
     public void publishEvent(Object event) {
@@ -243,12 +247,15 @@ public class EventPublisherService {
         if (event instanceof PointsAccruedEvent pae)       return pae.getTopic();
         if (event instanceof TransactionCreatedEvent tce)  return tce.getTopic();
         String type = event.getClass().getSimpleName();
-        return switch (type) {
-            case "PointsExpiredEvent", "PontosAjustadosEvent", "PontosEstornadosEvent" -> "loyalty.points";
-            case "ResgateRequestedEvent", "ResgateCompletedEvent" -> "loyalty.resgates";
-            case "NotificacaoEnviadaEvent" -> "loyalty.notifications";
-            default -> "loyalty.events";
-        };
+        if ("PointsExpiredEvent".equals(type) || "PontosAjustadosEvent".equals(type) || "PontosEstornadosEvent".equals(type)) {
+            return "loyalty.points";
+        } else if ("ResgateRequestedEvent".equals(type) || "ResgateCompletedEvent".equals(type)) {
+            return "loyalty.resgates";
+        } else if ("NotificacaoEnviadaEvent".equals(type)) {
+            return "loyalty.notifications";
+        } else {
+            return "loyalty.events";
+        }
     }
 
     private String determineKey(Object event) {

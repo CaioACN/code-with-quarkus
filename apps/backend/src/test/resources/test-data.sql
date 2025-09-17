@@ -27,7 +27,7 @@ INSERT INTO loyalty.transacao (id, cartao_id, usuario_id, valor, moeda, mcc, cat
 
 -- Inserir recompensas de teste
 INSERT INTO loyalty.recompensa (id, tipo, descricao, custo_pontos, estoque, parceiro_id, ativo, detalhes, imagem_url, validade_recompensa, criado_em, atualizado_em) VALUES 
-(1, 'MILHAS', '1000 Milhas Aéreas', 1000, 50, 1, true, 'Válido para qualquer companhia aérea', 'https://exemplo.com/milhas.jpg', CURRENT_TIMESTAMP + INTERVAL '1 year', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'MILHAS', '1000 Milhas aéreas', 1000, 50, 1, true, 'Válido para qualquer companhia aérea', 'https://exemplo.com/milhas.jpg', CURRENT_TIMESTAMP + INTERVAL '1 year', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (2, 'GIFT', 'Vale Presente R$ 50', 500, 100, 2, true, 'Válido em lojas parceiras', 'https://exemplo.com/gift.jpg', CURRENT_TIMESTAMP + INTERVAL '6 months', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (3, 'CASHBACK', 'Cashback R$ 25', 250, 200, 3, true, 'Depositado na conta corrente', 'https://exemplo.com/cashback.jpg', CURRENT_TIMESTAMP + INTERVAL '3 months', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 

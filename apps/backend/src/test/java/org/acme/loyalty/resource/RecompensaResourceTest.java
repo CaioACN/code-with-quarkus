@@ -16,10 +16,12 @@ class RecompensaResourceTest {
     @Test
     @Order(1)
     void testCriarRecompensa() {
+        // Usar timestamp para garantir descrição única
+        long timestamp = System.currentTimeMillis();
         String recompensaJson = """
             {
                 "tipo": "MILHAS",
-                "descricao": "Recompensa de teste",
+                "descricao": "Recompensa de teste %d",
                 "custoPontos": 1000,
                 "estoque": 10,
                 "parceiroId": 1,
@@ -27,7 +29,7 @@ class RecompensaResourceTest {
                 "imagemUrl": "https://example.com/imagem.jpg",
                 "validadeRecompensa": "2025-12-31T23:59:59"
             }
-            """;
+            """.formatted(timestamp);
 
         given()
             .contentType(ContentType.JSON)
@@ -38,7 +40,7 @@ class RecompensaResourceTest {
             .statusCode(201)
             .contentType(ContentType.JSON)
             .body("data.tipo", is("MILHAS"))
-            .body("data.descricao", is("Recompensa de teste"))
+            .body("data.descricao", is("Recompensa de teste " + timestamp))
             .body("data.custoPontos", is(1000))
             .body("data.estoque", is(10))
             .body("data.parceiroId", is(1))

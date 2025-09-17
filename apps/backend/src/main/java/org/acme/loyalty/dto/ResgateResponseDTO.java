@@ -70,6 +70,16 @@ public class ResgateResponseDTO {
     @Schema(description = "Parceiro processador (quando aplicável)")
     public String parceiroProcessador;
 
+    // ================== IDs diretos para compatibilidade ==================
+    @Schema(description = "ID do usuário (compatibilidade)")
+    public Long usuarioId;
+
+    @Schema(description = "ID do cartão (compatibilidade)")
+    public Long cartaoId;
+
+    @Schema(description = "ID da recompensa (compatibilidade)")
+    public Long recompensaId;
+
     // ================== Resumos relacionados ==================
     @Schema(description = "Resumo do usuário")
     public UsuarioResumo usuario;
@@ -134,6 +144,7 @@ public class ResgateResponseDTO {
 
         // Usuario
         if (r.usuario != null) {
+            dto.usuarioId = r.usuario.id; // ID direto para compatibilidade
             dto.usuario = new UsuarioResumo();
             dto.usuario.id = r.usuario.id;
             // Pode estar LAZY; os campos abaixo assumem que foram carregados pelo serviço
@@ -143,6 +154,7 @@ public class ResgateResponseDTO {
 
         // Cartão
         if (r.cartao != null) {
+            dto.cartaoId = r.cartao.id; // ID direto para compatibilidade
             dto.cartao = new CartaoResumo();
             dto.cartao.id = r.cartao.id;
             // tenta mascarar número se disponível
@@ -151,6 +163,7 @@ public class ResgateResponseDTO {
 
         // Recompensa
         if (r.recompensa != null) {
+            dto.recompensaId = r.recompensa.id; // ID direto para compatibilidade
             dto.recompensa = new RecompensaResumo();
             dto.recompensa.id = r.recompensa.id;
             dto.recompensa.descricao = r.recompensa.descricao;
@@ -171,13 +184,14 @@ public class ResgateResponseDTO {
         } catch (Exception ignored) {}
         // fallback simples
         if (r.status == null) return null;
-        return switch (r.status) {
-            case PENDENTE -> "Aguardando Aprovação";
-            case APROVADO -> "Aprovado";
-            case CONCLUIDO -> "Concluído";
-            case NEGADO -> "Negado";
-            case CANCELADO -> "Cancelado";
-        };
+        
+        if (r.status == org.acme.loyalty.entity.Resgate.StatusResgate.PENDENTE) return "Aguardando Aprovação";
+        if (r.status == org.acme.loyalty.entity.Resgate.StatusResgate.APROVADO) return "Aprovado";
+        if (r.status == org.acme.loyalty.entity.Resgate.StatusResgate.CONCLUIDO) return "Concluído";
+        if (r.status == org.acme.loyalty.entity.Resgate.StatusResgate.NEGADO) return "Negado";
+        if (r.status == org.acme.loyalty.entity.Resgate.StatusResgate.CANCELADO) return "Cancelado";
+        
+        return "Status Desconhecido";
     }
 
     private static LocalDateTime lastMilestone(org.acme.loyalty.entity.Resgate r) {

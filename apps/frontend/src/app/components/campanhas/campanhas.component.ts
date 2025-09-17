@@ -23,6 +23,10 @@ export class CampanhasComponent implements OnInit {
   carregando = false;
   erro: string | null = null;
   sucesso: string | null = null;
+  
+  // Notificações e Modal de Confirmação
+  notificacao: { mensagem: string; tipo: 'success' | 'error' } | null = null;
+  modalConfirmacao: { mensagem: string; acao: () => void } | null = null;
 
   // Formulário
   formulario: CampanhaBonusRequest = {
@@ -38,8 +42,8 @@ export class CampanhasComponent implements OnInit {
 
   // Filtros
   filtros = {
-    ativo: undefined as boolean | undefined,
-    vigente: undefined as boolean | undefined,
+    ativo: '' as any,
+    vigente: '' as any,
     segmento: '',
     prioridade: undefined as number | undefined
   };
@@ -61,16 +65,28 @@ export class CampanhasComponent implements OnInit {
 
     const filtros = {
       ...this.filtros,
-      pagina: this.paginaAtual,
+      pagina: this.paginaAtual - 1, // Backend usa índice baseado em 0
       tamanho: this.tamanhoPagina
     };
 
-    // Remove filtros vazios
-    Object.keys(filtros).forEach(key => {
-      if (filtros[key as keyof typeof filtros] === undefined || filtros[key as keyof typeof filtros] === '') {
-        delete filtros[key as keyof typeof filtros];
-      }
-    });
+    // Converter strings para boolean
+    if (filtros.ativo === 'true') {
+      filtros.ativo = true;
+    } else if (filtros.ativo === 'false') {
+      filtros.ativo = false;
+    } else if (filtros.ativo === '') {
+      delete filtros.ativo;
+    }
+    
+    if (filtros.vigente === 'true') {
+      filtros.vigente = true;
+    } else if (filtros.vigente === 'false') {
+      filtros.vigente = false;
+    } else if (filtros.vigente === '') {
+      delete filtros.vigente;
+    }
+
+
 
     this.campanhaService.listarCampanhas(filtros).subscribe({
       next: (response) => {
@@ -157,22 +173,27 @@ export class CampanhasComponent implements OnInit {
   }
 
   deletarCampanha(campanha: CampanhaBonusResponse): void {
-    if (confirm(`Tem certeza que deseja deletar a campanha "${campanha.nome}"?`)) {
-      this.carregando = true;
-      this.erro = null;
+    this.mostrarConfirmacao(
+      `Tem certeza que deseja deletar a campanha "${campanha.nome}"?`,
+      () => this.executarDelecaoCampanha(campanha)
+    );
+  }
 
-      this.campanhaService.deletarCampanha(campanha.id).subscribe({
-        next: () => {
-          this.sucesso = 'Campanha deletada com sucesso';
-          this.carregarCampanhas();
-          this.carregando = false;
-        },
-        error: (error) => {
-          this.erro = 'Erro ao deletar campanha: ' + (error.error?.message || error.message);
-          this.carregando = false;
-        }
-      });
-    }
+  private executarDelecaoCampanha(campanha: CampanhaBonusResponse): void {
+    this.carregando = true;
+    this.erro = null;
+
+    this.campanhaService.deletarCampanha(campanha.id).subscribe({
+      next: () => {
+        this.mostrarNotificacao('Campanha deletada com sucesso', 'success');
+        this.carregarCampanhas();
+        this.carregando = false;
+      },
+      error: (error) => {
+        this.mostrarNotificacao('Erro ao deletar campanha', 'error');
+        this.carregando = false;
+      }
+    });
   }
 
   ativarCampanha(campanha: CampanhaBonusResponse): void {
@@ -216,8 +237,8 @@ export class CampanhasComponent implements OnInit {
 
   limparFiltros(): void {
     this.filtros = {
-      ativo: undefined,
-      vigente: undefined,
+      ativo: '' as any,
+      vigente: '' as any,
       segmento: '',
       prioridade: undefined
     };
@@ -264,5 +285,32 @@ export class CampanhasComponent implements OnInit {
   fecharAlerta(): void {
     this.erro = null;
     this.sucesso = null;
+  }
+
+  mostrarNotificacao(mensagem: string, tipo: 'success' | 'error'): void {
+    this.notificacao = { mensagem, tipo };
+    // Auto-remover após 3 segundos
+    setTimeout(() => {
+      this.notificacao = null;
+    }, 3000);
+  }
+
+  fecharNotificacao(): void {
+    this.notificacao = null;
+  }
+
+  mostrarConfirmacao(mensagem: string, acao: () => void): void {
+    this.modalConfirmacao = { mensagem, acao };
+  }
+
+  confirmarAcao(): void {
+    if (this.modalConfirmacao) {
+      this.modalConfirmacao.acao();
+      this.modalConfirmacao = null;
+    }
+  }
+
+  cancelarAcao(): void {
+    this.modalConfirmacao = null;
   }
 }

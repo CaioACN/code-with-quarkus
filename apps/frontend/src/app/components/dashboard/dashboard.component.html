@@ -1,7 +1,7 @@
-<div class="dashboard-container">
+<div class="painel-container">
   <!-- Header -->
-  <div class="dashboard-header">
-    <h1>Dashboard - Sistema de Pontos</h1>
+  <div class="painel-header">
+    <h1>Painel - Sistema de Pontos</h1>
     <button class="btn-refresh" (click)="carregarDashboard()" [disabled]="loading">
       <i class="icon-refresh" [class.spinning]="loading"></i>
       Atualizar
@@ -11,7 +11,7 @@
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-container">
     <div class="spinner"></div>
-    <p>Carregando dashboard...</p>
+    <p>Carregando painel...</p>
   </div>
 
   <!-- Error State -->
@@ -23,8 +23,8 @@
     </div>
   </div>
 
-  <!-- Dashboard Content -->
-  <div *ngIf="dashboard && !loading && !error" class="dashboard-content">
+  <!-- Painel Content -->
+  <div *ngIf="dashboard && !loading && !error" class="painel-content">
     
     <!-- Período -->
     <div class="periodo-info">

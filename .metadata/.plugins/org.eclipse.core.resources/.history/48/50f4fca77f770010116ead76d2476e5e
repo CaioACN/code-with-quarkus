@@ -1,0 +1,320 @@
+package br.com.caioacn.validapontos.service;
+
+import br.com.caioacn.validapontos.dto.CartaoDTO;
+import br.com.caioacn.validapontos.dto.PageResponse;
+import br.com.caioacn.validapontos.model.Cartao;
+import br.com.caioacn.validapontos.model.Usuario;
+import br.com.caioacn.validapontos.repository.CartaoRepository;
+import br.com.caioacn.validapontos.repository.UsuarioRepository;
+import br.com.caioacn.validapontos.support.CartaoDTOSupport;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+class CartaoServiceTest {
+
+    CartaoRepository cartaoRepository;
+    UsuarioRepository usuarioRepository;
+    CartaoService service;
+
+    @BeforeEach
+    void setup() {
+        cartaoRepository = mock(CartaoRepository.class);
+        usuarioRepository = mock(UsuarioRepository.class);
+        service = new CartaoService();
+        service.cartaoRepository = cartaoRepository;
+        service.usuarioRepository = usuarioRepository;
+    }
+
+    private Cartao novoCartao(Long id, String numero, Long idUsuario) {
+        Cartao c = new Cartao();
+        c.id = id;
+        c.numero = numero;
+        c.nomeImpresso = "NOME " + numero;
+        c.validade = LocalDate.of(2030, 12, 1);
+        c.limite = new BigDecimal("1000.00");
+        if (idUsuario != null) {
+            Usuario u = new Usuario();
+            u.id = idUsuario;
+            c.usuario = u;
+        }
+        return c;
+    }
+
+    /* ---------- salvar() ---------- */
+
+    @Test
+    void salvar_ok() {
+        CartaoDTO dto = CartaoDTOSupport.createDefault();
+        Usuario u = new Usuario(); u.id = dto.idUsuario;
+
+        when(usuarioRepository.findById(dto.idUsuario)).thenReturn(u);
+        when(cartaoRepository.existsNumero(dto.numero, null)).thenReturn(false);
+
+        // simula ID gerado
+        doAnswer(inv -> { Cartao c = inv.getArgument(0); c.id = 42L; return null; })
+                .when(cartaoRepository).persist(any(Cartao.class));
+
+        Long id = service.salvar(dto);
+
+        assertEquals(42L, id);
+        verify(cartaoRepository).persist(any(Cartao.class));
+    }
+
+    @Test
+    void salvar_capturaEntidadePersistida_confereMapeamentoBasico() {
+        CartaoDTO dto = CartaoDTOSupport.createWithValues(
+                null, "9999", "NOME IMP", LocalDate.of(2035, 5, 1), new BigDecimal("77.77"), 55L
+        );
+        Usuario u = new Usuario(); u.id = 55L;
+
+        when(usuarioRepository.findById(55L)).thenReturn(u);
+        when(cartaoRepository.existsNumero("9999", null)).thenReturn(false);
+
+        ArgumentCaptor<Cartao> cap = ArgumentCaptor.forClass(Cartao.class);
+        doAnswer(inv -> { Cartao c = inv.getArgument(0); c.id = 7L; return null; })
+                .when(cartaoRepository).persist(any(Cartao.class));
+
+        Long id = service.salvar(dto);
+        assertEquals(7L, id);
+
+        verify(cartaoRepository).persist(cap.capture());
+        Cartao persisted = cap.getValue();
+        assertEquals("9999", persisted.numero);
+        assertEquals("NOME IMP", persisted.nomeImpresso);
+        assertEquals(LocalDate.of(2035, 5, 1), persisted.validade);
+        assertEquals(new BigDecimal("77.77"), persisted.limite);
+        assertNotNull(persisted.usuario);
+        assertEquals(55L, persisted.usuario.id);
+    }
+
+    @Test
+    void salvar_idUsuarioObrigatorio() {
+        CartaoDTO dto = CartaoDTOSupport.createWithValues(null, "123", "Nome", LocalDate.now(), new BigDecimal("10"), null);
+        WebApplicationException ex = assertThrows(WebApplicationException.class, () -> service.salvar(dto));
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), ex.getResponse().getStatus());
+    }
+
+    @Test
+    void salvar_usuarioNaoEncontrado() {
+        CartaoDTO dto = CartaoDTOSupport.createDefault();
+        when(usuarioRepository.findById(dto.idUsuario)).thenReturn(null);
+
+        NotFoundException ex = assertThrows(NotFoundException.class, () -> service.salvar(dto));
+        assertTrue(ex.getMessage().contains("Usuário não encontrado"));
+    }
+
+    @Test
+    void salvar_numeroDuplicado() {
+        CartaoDTO dto = CartaoDTOSupport.createDefault();
+        when(usuarioRepository.findById(dto.idUsuario)).thenReturn(new Usuario());
+        when(cartaoRepository.existsNumero(dto.numero, null)).thenReturn(true);
+
+        WebApplicationException ex = assertThrows(WebApplicationException.class, () -> service.salvar(dto));
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), ex.getResponse().getStatus());
+    }
+
+    /* ---------- buscarPorId() ---------- */
+
+    @Test
+    void buscarPorId_ok() {
+        Cartao c = novoCartao(10L, "1111222233334444", 1L);
+        when(cartaoRepository.findByIdWithUsuario(10L)).thenReturn(c);
+
+        var dto = service.buscarPorId(10L);
+
+        assertEquals(10L, dto.id);
+        assertEquals("1111222233334444", dto.numero);
+        assertEquals(1L, dto.idUsuario);
+    }
+
+    @Test
+    void buscarPorId_naoEncontrado() {
+        when(cartaoRepository.findByIdWithUsuario(99L)).thenReturn(null);
+        assertThrows(NotFoundException.class, () -> service.buscarPorId(99L));
+    }
+
+    /* ---------- listar() ---------- */
+
+    @Test
+    void listar_paginado_ok_hasNext_true() {
+        when(cartaoRepository.countAll()).thenReturn(3L);
+        when(cartaoRepository.listPagedWithUsuario(0, 2))
+                .thenReturn(Arrays.asList(novoCartao(1L, "AAA", 1L), novoCartao(2L, "BBB", 1L)));
+
+        PageResponse<CartaoDTO> pr = service.listar(0, 2);
+
+        assertEquals(2, pr.items.size());
+        assertEquals(0, pr.page);
+        assertEquals(2, pr.size);
+        assertEquals(3L, pr.totalElements);
+        assertEquals(2, pr.totalPages);
+        assertFalse(pr.hasPrevious);
+        assertTrue(pr.hasNext);
+    }
+
+    @Test
+    void listar_paginaSeguinte_hasPrevious_true_hasNext_false_limiteExato() {
+        // total 4, page=1, size=2 => (1+1)*2 == 4 => hasNext false
+        when(cartaoRepository.countAll()).thenReturn(4L);
+        when(cartaoRepository.listPagedWithUsuario(1, 2))
+                .thenReturn(Arrays.asList(novoCartao(3L, "CCC", 1L), novoCartao(4L, "DDD", 1L)));
+
+        PageResponse<CartaoDTO> pr = service.listar(1, 2);
+
+        assertEquals(1, pr.page);
+        assertEquals(2, pr.size);
+        assertEquals(4L, pr.totalElements);
+        assertEquals(2, pr.totalPages);
+        assertTrue(pr.hasPrevious);
+        assertFalse(pr.hasNext);
+    }
+
+    @Test
+    void listar_parametrosInvalidos_saoNormalizados() {
+        when(cartaoRepository.countAll()).thenReturn(0L);
+        when(cartaoRepository.listPagedWithUsuario(0, 10)).thenReturn(List.of());
+
+        PageResponse<CartaoDTO> pr = service.listar(-5, 0);
+
+        assertEquals(0, pr.page);
+        assertEquals(10, pr.size);
+        assertEquals(0, pr.totalElements);
+        assertEquals(0, pr.totalPages);
+        assertFalse(pr.hasPrevious);
+        assertFalse(pr.hasNext);
+    }
+
+    /* ---------- listarPorUsuario() ---------- */
+
+    @Test
+    void listarPorUsuario_ok() {
+        when(cartaoRepository.listByUsuario(7L))
+                .thenReturn(Arrays.asList(novoCartao(100L, "XYZ", 7L), novoCartao(101L, "QWE", 7L)));
+
+        var lista = service.listarPorUsuario(7L);
+
+        assertEquals(2, lista.size());
+        assertEquals(7L, lista.get(0).idUsuario);
+    }
+
+    /* ---------- atualizar() ---------- */
+
+    @Test
+    void atualizar_ok_semDuplicarNumero() {
+        Cartao existente = novoCartao(5L, "NUM_ANTIGO", 1L);
+        when(cartaoRepository.findByIdWithUsuario(5L)).thenReturn(existente);
+        when(cartaoRepository.existsNumero("NUM_NOVO", 5L)).thenReturn(false);
+
+        CartaoDTO dto = CartaoDTOSupport.createWithValues(
+                null, "NUM_NOVO", "NOVO NOME", LocalDate.of(2031, 1, 1),
+                new BigDecimal("9999.99"), 2L
+        );
+
+        Usuario novoU = new Usuario(); novoU.id = 2L;
+        when(usuarioRepository.findById(2L)).thenReturn(novoU);
+
+        assertDoesNotThrow(() -> service.atualizar(5L, dto));
+
+        assertEquals("NUM_NOVO", existente.numero);
+        assertEquals("NOVO NOME", existente.nomeImpresso);
+        assertEquals(LocalDate.of(2031, 1, 1), existente.validade);
+        assertEquals(new BigDecimal("9999.99"), existente.limite);
+        assertEquals(2L, existente.usuario.id);
+    }
+
+    @Test
+    void atualizar_ok_semTrocarNumeroNemUsuario() {
+        Cartao existente = novoCartao(5L, "MESMO", 9L);
+        when(cartaoRepository.findByIdWithUsuario(5L)).thenReturn(existente);
+
+        CartaoDTO dto = CartaoDTOSupport.createWithValues(
+                null, "MESMO", "OUTRO NOME", LocalDate.of(2032, 2, 1),
+                new BigDecimal("123.45"), 9L
+        );
+
+        assertDoesNotThrow(() -> service.atualizar(5L, dto));
+        verify(cartaoRepository, never()).existsNumero(anyString(), anyLong());
+        verify(usuarioRepository, never()).findById(anyLong());
+
+        assertEquals("MESMO", existente.numero);
+        assertEquals("OUTRO NOME", existente.nomeImpresso);
+        assertEquals(LocalDate.of(2032, 2, 1), existente.validade);
+        assertEquals(new BigDecimal("123.45"), existente.limite);
+        assertEquals(9L, existente.usuario.id);
+    }
+
+    @Test
+    void atualizar_quandoCartaoNaoTemUsuario_deveCarregarNovoUsuario() {
+        Cartao existente = novoCartao(5L, "NUM", null); // sem usuário associado
+        when(cartaoRepository.findByIdWithUsuario(5L)).thenReturn(existente);
+
+        CartaoDTO dto = CartaoDTOSupport.createWithValues(
+                null, "NUM", null, null, null, 77L
+        );
+
+        Usuario novoU = new Usuario(); novoU.id = 77L;
+        when(usuarioRepository.findById(77L)).thenReturn(novoU);
+
+        service.atualizar(5L, dto);
+
+        assertNotNull(existente.usuario);
+        assertEquals(77L, existente.usuario.id);
+    }
+
+    @Test
+    void atualizar_cartaoNaoEncontrado() {
+        when(cartaoRepository.findByIdWithUsuario(123L)).thenReturn(null);
+        assertThrows(NotFoundException.class, () -> service.atualizar(123L, CartaoDTOSupport.createDefault()));
+    }
+
+    @Test
+    void atualizar_numeroDuplicado() {
+        Cartao existente = novoCartao(5L, "NUM_ANTIGO", 1L);
+        when(cartaoRepository.findByIdWithUsuario(5L)).thenReturn(existente);
+        when(cartaoRepository.existsNumero("DUP", 5L)).thenReturn(true);
+
+        CartaoDTO dto = CartaoDTOSupport.createWithValues(null, "DUP", null, null, null, null);
+
+        WebApplicationException ex = assertThrows(WebApplicationException.class, () -> service.atualizar(5L, dto));
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), ex.getResponse().getStatus());
+    }
+
+    @Test
+    void atualizar_trocaUsuario_naoEncontrado() {
+        Cartao existente = novoCartao(5L, "NUM_ANTIGO", 1L);
+        when(cartaoRepository.findByIdWithUsuario(5L)).thenReturn(existente);
+
+        CartaoDTO dto = CartaoDTOSupport.createWithValues(null, null, null, null, null, 999L);
+        when(usuarioRepository.findById(999L)).thenReturn(null);
+
+        assertThrows(NotFoundException.class, () -> service.atualizar(5L, dto));
+    }
+
+    /* ---------- deletar() ---------- */
+
+    @Test
+    void deletar_ok() {
+        when(cartaoRepository.deleteById(5L)).thenReturn(true);
+        assertDoesNotThrow(() -> service.deletar(5L));
+        verify(cartaoRepository).deleteById(5L);
+    }
+
+    @Test
+    void deletar_naoEncontrado() {
+        when(cartaoRepository.deleteById(999L)).thenReturn(false);
+        assertThrows(NotFoundException.class, () -> service.deletar(999L));
+    }
+}

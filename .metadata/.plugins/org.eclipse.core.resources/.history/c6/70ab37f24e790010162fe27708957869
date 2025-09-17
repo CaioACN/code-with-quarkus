@@ -1,0 +1,15 @@
+# --- DESATIVA DevServices ---
+quarkus.devservices.enabled=false
+quarkus.datasource.devservices.enabled=false
+
+# --- Datasource DEFAULT (PostgreSQL local na porta 5433) ---
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5433/quarkus-social
+quarkus.datasource.username=postgres
+quarkus.datasource.password=postgres
+
+# --- Hibernate ORM ---
+quarkus.hibernate-orm.database.generation=none
+quarkus.hibernate-orm.sql-load-script=no-file
+quarkus.hibernate-orm.log.sql=true
+quarkus.hibernate-orm.log.format-sql=true

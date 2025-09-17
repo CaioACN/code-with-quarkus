@@ -1,4 +1,22 @@
 <div class="transacoes-container">
+  <!-- Notificação -->
+  <div *ngIf="notificacao" class="notificacao" [ngClass]="'notificacao-' + notificacao.tipo">
+    <span>{{ notificacao.mensagem }}</span>
+    <button class="btn-close" (click)="fecharNotificacao()">&times;</button>
+  </div>
+
+  <!-- Modal de Confirmação -->
+  <div *ngIf="modalConfirmacao" class="modal-overlay">
+    <div class="modal-confirmacao">
+      <h3>Confirmação</h3>
+      <p>{{ modalConfirmacao.mensagem }}</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="cancelarAcao()">Cancelar</button>
+        <button class="btn btn-danger" (click)="confirmarAcao()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Header -->
   <div class="transacoes-header">
     <h1>Gestão de Transações</h1>

@@ -5,6 +5,7 @@ import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.acme.loyalty.entity.Transacao;
+import org.acme.loyalty.entity.Transacao.StatusTransacao;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,7 +37,7 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
         return find("cartao.id = ?1", cartaoId).list();
     }
 
-    public List<Transacao> listByStatus(Transacao.StatusTransacao status) {
+    public List<Transacao> listByStatus(StatusTransacao status) {
         if (status == null) return List.of();
         return find("status = ?1", status).list();
     }
@@ -93,16 +94,16 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
     // --------------------- Transações pendentes de processamento ---------------------
 
     public List<Transacao> listarPendentesProcessamento() {
-        return find("status = ?1", Transacao.StatusTransacao.APROVADA).list();
+        return find("status = ?1", StatusTransacao.APROVADA).list();
     }
 
     public List<Transacao> listarPendentesProcessamentoPorUsuario(Long usuarioId) {
         if (usuarioId == null) return List.of();
-        return find("usuario.id = ?1 and status = ?2", usuarioId, Transacao.StatusTransacao.APROVADA).list();
+        return find("usuario.id = ?1 and status = ?2", usuarioId, StatusTransacao.APROVADA).list();
     }
 
     public long countPendentesProcessamento() {
-        return count("status = ?1", Transacao.StatusTransacao.APROVADA);
+        return count("status = ?1", StatusTransacao.APROVADA);
     }
     
     // --------------------- Idempotência conforme regra 17.3 ---------------------
@@ -130,7 +131,7 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
      * NEGADA não gera pontos
      */
     public List<Transacao> listarQuePodemGerarPontos() {
-        return find("status != ?1", Transacao.StatusTransacao.NEGADA).list();
+        return find("status != ?1", StatusTransacao.NEGADA).list();
     }
     
     /**
@@ -138,7 +139,7 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
      * ESTORNADA deve produzir movimento_pontos(ESTORNO)
      */
     public List<Transacao> listarEstornadas() {
-        return find("status = ?1", Transacao.StatusTransacao.ESTORNADA).list();
+        return find("status = ?1", StatusTransacao.ESTORNADA).list();
     }
 
     // --------------------- Estatísticas e agregações ---------------------
@@ -228,7 +229,7 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
 
     /** Busca avançada com filtros opcionais e paginação. */
     public PanacheQuery<Transacao> queryAvancada(Long usuarioId, Long cartaoId, String mcc,
-                                                 String categoria, Transacao.StatusTransacao status,
+                                                 String categoria, StatusTransacao status,
                                                  LocalDateTime inicio, LocalDateTime fim,
                                                  int page, int size) {
         StringBuilder query = new StringBuilder();
@@ -274,5 +275,51 @@ public class TransacaoRepository implements PanacheRepository<Transacao> {
                 (query.length() > 0) ? find(query.toString(), params.toArray()) : findAll();
 
         return panacheQuery.page(Page.of(page, size));
+    }
+
+    /** Contagem para busca avançada (usado para paginação). */
+    public long queryAvancadaCount(Long usuarioId, Long cartaoId, String mcc,
+                                   String categoria, StatusTransacao status,
+                                   LocalDateTime inicio, LocalDateTime fim) {
+        StringBuilder query = new StringBuilder();
+        var params = new java.util.ArrayList<>();
+        int paramIndex = 1;
+
+        if (usuarioId != null) {
+            query.append("usuario.id = ?").append(paramIndex++);
+            params.add(usuarioId);
+        }
+        if (cartaoId != null) {
+            if (query.length() > 0) query.append(" and ");
+            query.append("cartao.id = ?").append(paramIndex++);
+            params.add(cartaoId);
+        }
+        if (mcc != null && !mcc.isBlank()) {
+            if (query.length() > 0) query.append(" and ");
+            query.append("mcc = ?").append(paramIndex++);
+            params.add(mcc.trim());
+        }
+        if (categoria != null && !categoria.isBlank()) {
+            if (query.length() > 0) query.append(" and ");
+            query.append("lower(categoria) like ?").append(paramIndex++);
+            params.add("%" + categoria.trim().toLowerCase() + "%");
+        }
+        if (status != null) {
+            if (query.length() > 0) query.append(" and ");
+            query.append("status = ?").append(paramIndex++);
+            params.add(status);
+        }
+        if (inicio != null) {
+            if (query.length() > 0) query.append(" and ");
+            query.append("dataEvento >= ?").append(paramIndex++);
+            params.add(inicio);
+        }
+        if (fim != null) {
+            if (query.length() > 0) query.append(" and ");
+            query.append("dataEvento <= ?").append(paramIndex++);
+            params.add(fim);
+        }
+
+        return (query.length() > 0) ? count(query.toString(), params.toArray()) : count();
     }
 }

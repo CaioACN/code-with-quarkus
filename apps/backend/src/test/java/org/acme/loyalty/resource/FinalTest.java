@@ -91,7 +91,7 @@ class FinalTest {
         String recompensa2 = """
             {
                 "tipo": "MILHAS",
-                "descricao": "5.000 Milhas Aéreas",
+                "descricao": "5.000 Milhas aéreas",
                 "custoPontos": 5000,
                 "estoque": 5,
                 "parceiroId": 2,

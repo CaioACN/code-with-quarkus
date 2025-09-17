@@ -1,0 +1,35 @@
+quarkus.http.port=8080
+quarkus.http.host=0.0.0.0
+quarkus.banner.enabled=false
+quarkus.log.console.level=DEBUG
+
+# Sem DevServices
+quarkus.devservices.enabled=false
+quarkus.datasource.devservices.enabled=false
+
+# Hibernate
+quarkus.hibernate-orm.database.generation=validate
+quarkus.hibernate-orm.sql-load-script=no-file
+quarkus.hibernate-orm.log.sql=true
+quarkus.hibernate-orm.log.format-sql=true
+
+# ===== BASE (datasource para o build SEM perfil) =====
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+quarkus.datasource.username=postgres
+quarkus.datasource.password=postgres
+quarkus.hibernate-orm.datasource=default
+
+# ===================== Perfil LOCAL =====================
+%local.quarkus.datasource.db-kind=postgresql
+%local.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+%local.quarkus.datasource.username=postgres
+%local.quarkus.datasource.password=postgres
+%local.quarkus.hibernate-orm.datasource=default
+
+# ===================== Perfil DOCKER (compose) =====================
+%docker.quarkus.datasource.db-kind=postgresql
+%docker.quarkus.datasource.jdbc.url=jdbc:postgresql://postgres:5432/quarkus-social
+%docker.quarkus.datasource.username=postgres
+%docker.quarkus.datasource.password=postgres
+%docker.quarkus.hibernate-orm.datasource=default

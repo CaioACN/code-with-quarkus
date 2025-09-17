@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.acme.loyalty.entity.Cartao;
 import org.acme.loyalty.entity.MovimentoPontos;
+import org.acme.loyalty.entity.MovimentoPontos.TipoMovimento;
 import org.acme.loyalty.entity.Transacao;
 import org.acme.loyalty.entity.Usuario;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -68,7 +69,7 @@ public class AjustePontosDTO {
         MovimentoPontos mp = new MovimentoPontos();
         mp.usuario = usuario;
         mp.cartao = cartao;
-        mp.tipo = MovimentoPontos.TipoMovimento.AJUSTE;
+        mp.tipo = TipoMovimento.AJUSTE;
         mp.pontos = this.pontos; // pode ser negativo (débito) ou positivo (crédito)
         mp.observacao = this.observacao;
         mp.jobId = this.jobId;

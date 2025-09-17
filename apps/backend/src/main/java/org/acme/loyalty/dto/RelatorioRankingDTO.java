@@ -194,14 +194,22 @@ public class RelatorioRankingDTO {
         totalUsuariosConsiderados = itens.size();
 
         // Ordena desc conforme critério
-        Comparator<ItemRanking> cmp = switch (criterio) {
-            case PONTOS -> Comparator.comparingLong((ItemRanking i) -> i.pontosLiquidos);
-            case ACUMULO -> Comparator.comparingLong((ItemRanking i) -> i.acumulo);
-            case RESGATE -> Comparator.comparingLong((ItemRanking i) -> i.resgate);
-            case SALDO -> Comparator.comparingLong((ItemRanking i) -> nz(i.saldoAtual));
-            case VALOR -> Comparator.comparing((ItemRanking i) -> nz(i.valorTotal));
-            case FREQUENCIA -> Comparator.comparingLong((ItemRanking i) -> nz(i.transacoes));
-        };
+        Comparator<ItemRanking> cmp;
+        if (criterio == Criterio.PONTOS) {
+            cmp = Comparator.comparingLong((ItemRanking i) -> i.pontosLiquidos);
+        } else if (criterio == Criterio.ACUMULO) {
+            cmp = Comparator.comparingLong((ItemRanking i) -> i.acumulo);
+        } else if (criterio == Criterio.RESGATE) {
+            cmp = Comparator.comparingLong((ItemRanking i) -> i.resgate);
+        } else if (criterio == Criterio.SALDO) {
+            cmp = Comparator.comparingLong((ItemRanking i) -> nz(i.saldoAtual));
+        } else if (criterio == Criterio.VALOR) {
+            cmp = Comparator.comparing((ItemRanking i) -> nz(i.valorTotal));
+        } else if (criterio == Criterio.FREQUENCIA) {
+            cmp = Comparator.comparingLong((ItemRanking i) -> nz(i.transacoes));
+        } else {
+            cmp = Comparator.comparingLong((ItemRanking i) -> i.pontosLiquidos);
+        }
         // descending
         cmp = cmp.reversed().thenComparing(i -> i.nome, Comparator.nullsLast(String::compareToIgnoreCase));
         itens.sort(cmp);
@@ -221,26 +229,42 @@ public class RelatorioRankingDTO {
         }
 
         // base para share
-        BigDecimal baseShare = switch (criterio) {
-            case PONTOS -> bd(agregados.pontosLiquidos);
-            case ACUMULO -> bd(agregados.acumulo);
-            case RESGATE -> bd(agregados.resgate);
-            case SALDO -> bd(sum(itens, i -> nz(i.saldoAtual)));
-            case VALOR -> nz(agregados.valorTotal);
-            case FREQUENCIA -> bd(agregados.transacoes);
-        };
+        BigDecimal baseShare;
+        if (criterio == Criterio.PONTOS) {
+            baseShare = bd(agregados.pontosLiquidos);
+        } else if (criterio == Criterio.ACUMULO) {
+            baseShare = bd(agregados.acumulo);
+        } else if (criterio == Criterio.RESGATE) {
+            baseShare = bd(agregados.resgate);
+        } else if (criterio == Criterio.SALDO) {
+            baseShare = bd(sum(itens, i -> nz(i.saldoAtual)));
+        } else if (criterio == Criterio.VALOR) {
+            baseShare = nz(agregados.valorTotal);
+        } else if (criterio == Criterio.FREQUENCIA) {
+            baseShare = bd(agregados.transacoes);
+        } else {
+            baseShare = bd(agregados.pontosLiquidos);
+        }
         if (baseShare == null || baseShare.signum() == 0) {
             for (ItemRanking it : itens) it.share = BigDecimal.ZERO;
         } else {
             for (ItemRanking it : itens) {
-                BigDecimal num = switch (criterio) {
-                    case PONTOS -> bd(it.pontosLiquidos);
-                    case ACUMULO -> bd(it.acumulo);
-                    case RESGATE -> bd(it.resgate);
-                    case SALDO -> bd(nz(it.saldoAtual));
-                    case VALOR -> nz(it.valorTotal);
-                    case FREQUENCIA -> bd(nz(it.transacoes));
-                };
+                BigDecimal num;
+                if (criterio == Criterio.PONTOS) {
+                    num = bd(it.pontosLiquidos);
+                } else if (criterio == Criterio.ACUMULO) {
+                    num = bd(it.acumulo);
+                } else if (criterio == Criterio.RESGATE) {
+                    num = bd(it.resgate);
+                } else if (criterio == Criterio.SALDO) {
+                    num = bd(nz(it.saldoAtual));
+                } else if (criterio == Criterio.VALOR) {
+                    num = nz(it.valorTotal);
+                } else if (criterio == Criterio.FREQUENCIA) {
+                    num = bd(nz(it.transacoes));
+                } else {
+                    num = bd(it.pontosLiquidos);
+                }
                 it.share = num.divide(baseShare, 6, RoundingMode.HALF_UP);
             }
         }

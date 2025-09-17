@@ -1,6 +1,7 @@
 package org.acme.loyalty.dto;
 
 import org.acme.loyalty.entity.MovimentoPontos;
+import org.acme.loyalty.entity.MovimentoPontos.TipoMovimento;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -19,7 +20,7 @@ public class MovimentoPontosDTO {
     
     @Schema(description = "Tipo do movimento", example = "ACUMULO", 
             enumeration = {"ACUMULO","EXPIRACAO","RESGATE","ESTORNO","AJUSTE"})
-    public MovimentoPontos.TipoMovimento tipo;
+    public TipoMovimento tipo;
     
     @Schema(description = "Quantidade de pontos", example = "100")
     public Integer pontos;
@@ -48,7 +49,7 @@ public class MovimentoPontosDTO {
     // Construtores
     public MovimentoPontosDTO() {}
     
-    public MovimentoPontosDTO(Long id, Long usuarioId, Long cartaoId, MovimentoPontos.TipoMovimento tipo, 
+    public MovimentoPontosDTO(Long id, Long usuarioId, Long cartaoId, TipoMovimento tipo, 
                               Integer pontos, Long refTransacaoId, String observacao, 
                               LocalDateTime criadoEm, String jobId, String regraAplicada, 
                               String campanhaAplicada) {
@@ -70,13 +71,18 @@ public class MovimentoPontosDTO {
     private String gerarDescricaoTipo() {
         if (tipo == null) return "Movimento de pontos";
         
-        switch (tipo) {
-            case ACUMULO: return "Acúmulo de pontos";
-            case EXPIRACAO: return "Expiração de pontos";
-            case RESGATE: return "Resgate de pontos";
-            case ESTORNO: return "Estorno de pontos";
-            case AJUSTE: return "Ajuste de pontos";
-            default: return "Movimento de pontos";
+        if (tipo == TipoMovimento.ACUMULO) {
+            return "Acúmulo de pontos";
+        } else if (tipo == TipoMovimento.EXPIRACAO) {
+            return "Expiração de pontos";
+        } else if (tipo == TipoMovimento.RESGATE) {
+            return "Resgate de pontos";
+        } else if (tipo == TipoMovimento.ESTORNO) {
+            return "Estorno de pontos";
+        } else if (tipo == TipoMovimento.AJUSTE) {
+            return "Ajuste de pontos";
+        } else {
+            return "Movimento de pontos";
         }
     }
     

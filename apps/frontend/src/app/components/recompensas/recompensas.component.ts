@@ -32,7 +32,7 @@ import { finalize } from 'rxjs/operators';
 export class RecompensasComponent implements OnInit, OnDestroy {
   recompensas: RecompensaResponseDTO[] = [];
   saldoUsuario: SaldoUsuarioDTO | null = null;
-  usuarioId: number = 1; // Em uma aplicação real, viria da autenticação
+  usuarioId: number = 4; // Em uma aplicação real, viria da autenticação
   cartaoId: number | null = null;
 
   novaRecompensa: RecompensaRequestDTO = {
@@ -254,7 +254,7 @@ export class RecompensasComponent implements OnInit, OnDestroy {
         
         // Mostra mensagem informando que as telas foram atualizadas
         setTimeout(() => {
-          this.showToast('Telas de Recompensas, Resgates e Dashboard atualizadas!');
+          this.showToast('Telas de Recompensas, Resgates e Painel atualizadas!');
         }, 2500);
       },
       error: (err) => {

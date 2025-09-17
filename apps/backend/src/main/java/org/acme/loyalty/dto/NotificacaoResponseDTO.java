@@ -185,13 +185,18 @@ public class NotificacaoResponseDTO {
         int retriesMax = 0;
         for (CanalResultado c : canais) {
             if (c.attempts != null) retriesMax = Math.max(retriesMax, c.attempts);
-            switch (c.status) {
-                case ENVIADA -> { ok++; sent++; }
-                case AGENDADA -> scheduled++;
-                case FALHA    -> fail++;
-                case CANCELADA -> fail++;
-                case ENFILEIRADA -> {}
-                case RETENTANDO -> {}
+            if (c.status == CanalResultado.CanalStatus.ENVIADA) {
+                ok++; sent++;
+            } else if (c.status == CanalResultado.CanalStatus.AGENDADA) {
+                scheduled++;
+            } else if (c.status == CanalResultado.CanalStatus.FALHA) {
+                fail++;
+            } else if (c.status == CanalResultado.CanalStatus.CANCELADA) {
+                fail++;
+            } else if (c.status == CanalResultado.CanalStatus.ENFILEIRADA) {
+                // no action
+            } else if (c.status == CanalResultado.CanalStatus.RETENTANDO) {
+                // no action
             }
         }
         this.retryCount = retriesMax;

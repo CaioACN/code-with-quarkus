@@ -1,0 +1,198 @@
+package br.com.caioacn.validapontos.resource;
+
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
+
+@QuarkusTest
+class CartaoResourceIT {
+
+    // ===== Helpers =====
+
+    private static Long criarUsuarioEObterId() {
+        // Tenta extrair o id do Location; se não vier, tenta do JSON (campo "id")
+        var response =
+            given()
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "nome", "Usuario IT " + System.nanoTime(),
+                        "email", "user" + System.nanoTime() + "@test.com"))
+            .when()
+                .post("/usuarios")
+            .then()
+                .statusCode(anyOf(is(201), is(200))) // aceite 201 Created ou 200 OK, conforme sua API
+                .extract();
+
+        String location = response.header("Location");
+        if (location != null) {
+            Matcher m = Pattern.compile(".*/usuarios/(\\d+)$").matcher(location);
+            if (m.find()) return Long.valueOf(m.group(1));
+        }
+        // fallback: corpo JSON com {"id":...}
+        Integer idFromJson = response.path("id");
+        if (idFromJson != null) return idFromJson.longValue();
+
+        throw new IllegalStateException("Não foi possível obter o id do usuário criado.");
+    }
+
+    private static Long criarCartaoEObterId(Long idUsuario, String numero) {
+        String payload = "{"
+                + "\"numero\":\"" + numero + "\","
+                + "\"nomeImpresso\":\"CAIO A C NUNES\","
+                + "\"validade\":\"2028-01-01\","
+                + "\"limite\":5000.00,"
+                + "\"idUsuario\":" + idUsuario
+                + "}";
+
+        var res =
+            given()
+                .contentType(ContentType.JSON)
+                .body(payload)
+            .when()
+                .post("/cartoes")
+            .then()
+                .statusCode(201)
+                .header("Location", allOf(notNullValue(), containsString("/cartoes/")))
+                .extract();
+
+        String location = res.header("Location");
+        Matcher m = Pattern.compile(".*/cartoes/(\\d+)$").matcher(location);
+        if (!m.find()) throw new IllegalStateException("Location inválido: " + location);
+        return Long.valueOf(m.group(1));
+    }
+
+    // ===== Tests =====
+
+    @Test
+    void fluxoCompleto_CRUD_e_erros() {
+        // cria usuário
+        Long idUsuario = criarUsuarioEObterId();
+
+        // cria cartão
+        String numero = "5555444433331111";
+        Long idCartao = criarCartaoEObterId(idUsuario, numero);
+
+        // lista (paginado)
+        given()
+            .when().get("/cartoes?page=0&size=10")
+        .then()
+            .statusCode(200)
+            .body("items.size()", greaterThanOrEqualTo(1))
+            .body("page", is(0))
+            .body("size", is(10))
+            .body("totalElements", greaterThanOrEqualTo(1))
+            .body("totalPages", greaterThanOrEqualTo(1));
+
+        // busca por id
+        given()
+            .when().get("/cartoes/{id}", idCartao)
+        .then()
+            .statusCode(200)
+            .body("id", is(idCartao.intValue()))
+            .body("numero", is(numero))
+            .body("idUsuario", is(idUsuario.intValue()));
+
+        // atualizar parcialmente (mantém número, altera nome/limite)
+        String patch = "{"
+            + "\"numero\":\"" + numero + "\","
+            + "\"nomeImpresso\":\"NOVO NOME\","
+            + "\"limite\":777.77"
+            + "}";
+        given()
+            .contentType(ContentType.JSON)
+            .body(patch)
+        .when()
+            .put("/cartoes/{id}", idCartao)
+        .then()
+            .statusCode(204);
+
+        // confirmar update
+        given()
+            .when().get("/cartoes/{id}", idCartao)
+        .then()
+            .statusCode(200)
+            .body("nomeImpresso", is("NOVO NOME"))
+            .body("limite", is(777.77f))
+            .body("numero", is(numero));
+
+        // conflito: tentar criar outro com mesmo número
+        String duplicado = "{"
+            + "\"numero\":\"" + numero + "\","
+            + "\"nomeImpresso\":\"DUP\","
+            + "\"validade\":\"2028-01-01\","
+            + "\"limite\":100.00,"
+            + "\"idUsuario\":" + idUsuario
+            + "}";
+        given()
+            .contentType(ContentType.JSON)
+            .body(duplicado)
+        .when()
+            .post("/cartoes")
+        .then()
+            .statusCode(409);
+
+        // deletar
+        given()
+            .when().delete("/cartoes/{id}", idCartao)
+        .then()
+            .statusCode(204);
+
+        // buscar deletado -> 404
+        given()
+            .when().get("/cartoes/{id}", idCartao)
+        .then()
+            .statusCode(404);
+    }
+
+    @Test
+    void listarPorUsuario_retorna_apenas_do_usuario() {
+        Long u1 = criarUsuarioEObterId();
+        Long u2 = criarUsuarioEObterId();
+
+        criarCartaoEObterId(u1, "4111111111111111");
+        criarCartaoEObterId(u1, "4222222222222222");
+        criarCartaoEObterId(u2, "4333333333333333");
+
+        given()
+            .when().get("/cartoes/usuario/{idUsuario}", u1)
+        .then()
+            .statusCode(200)
+            .body("size()", is(2))
+            .body("[0].idUsuario", is(u1.intValue()))
+            .body("[1].idUsuario", is(u1.intValue()));
+    }
+
+    @Test
+    void criar_semIdUsuario_deveRetornar400() {
+        // Falha de negócio: idUsuario é obrigatório (BAD_REQUEST)
+        String body = "{"
+            + "\"numero\":\"4999999999990000\","
+            + "\"nomeImpresso\":\"SEM USUARIO\","
+            + "\"validade\":\"2029-12-01\","
+            + "\"limite\":250.00"
+            + "}";
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(body)
+        .when()
+            .post("/cartoes")
+        .then()
+            .statusCode(400);
+    }
+
+    @Test
+    void buscarPorId_inexistente_deve404() {
+        given()
+            .when().get("/cartoes/{id}", 99999999)
+        .then()
+            .statusCode(404);
+    }
+}

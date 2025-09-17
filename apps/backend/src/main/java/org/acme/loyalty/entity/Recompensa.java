@@ -224,12 +224,16 @@ public class Recompensa extends PanacheEntity {
     public String getDescricaoTipo() {
         if (tipo == null) return "Desconhecido";
         
-        switch (this.tipo) {
-            case MILHAS: return "Milhas";
-            case GIFT: return "Gift Card";
-            case CASHBACK: return "Cashback";
-            case PRODUTO: return "Produto";
-            default: return "Desconhecido";
+        if (this.tipo == TipoRecompensa.MILHAS) {
+            return "Milhas";
+        } else if (this.tipo == TipoRecompensa.GIFT) {
+            return "Gift Card";
+        } else if (this.tipo == TipoRecompensa.CASHBACK) {
+            return "Cashback";
+        } else if (this.tipo == TipoRecompensa.PRODUTO) {
+            return "Produto";
+        } else {
+            return "Desconhecido";
         }
     }
     

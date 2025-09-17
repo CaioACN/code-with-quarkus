@@ -1,0 +1,16 @@
+# --- DESATIVA DevServices (sem Testcontainers) ---
+quarkus.devservices.enabled=false
+quarkus.datasource.devservices.enabled=false
+
+# --- Datasource nomeado "default" (PostgreSQL local) ---
+quarkus.datasource."default".db-kind=postgresql
+quarkus.datasource."default".jdbc.url=jdbc:postgresql://localhost:5432/quarkus-social
+quarkus.datasource."default".username=postgres
+quarkus.datasource."default".password=postgres
+
+# --- Hibernate ORM usa o datasource "default" ---
+quarkus.hibernate-orm.datasource=default
+quarkus.hibernate-orm.database.generation=none
+quarkus.hibernate-orm.sql-load-script=no-file
+quarkus.hibernate-orm.log.sql=true
+quarkus.hibernate-orm.log.format-sql=true

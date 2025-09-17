@@ -92,11 +92,10 @@ public class SaudeSistemaDTO {
     public enum Status {
         UP, WARN, DOWN;
         public int severity() {
-            return switch (this) {
-                case UP -> 0;
-                case WARN -> 1;
-                case DOWN -> 2;
-            };
+            if (this == UP) return 0;
+            if (this == WARN) return 1;
+            if (this == DOWN) return 2;
+            return 0; // default
         }
         public static Status worst(Status a, Status b) {
             return (a.severity() >= b.severity()) ? a : b;

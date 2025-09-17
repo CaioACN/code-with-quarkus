@@ -49,14 +49,14 @@ public class TransacaoResponseDTO {
     public static TransacaoResponseDTO fromEntity(org.acme.loyalty.entity.Transacao transacao) {
         return new TransacaoResponseDTO(
             transacao.id,
-            transacao.cartao.id,
-            transacao.usuario.id,
+            transacao.cartao != null ? transacao.cartao.id : null,
+            transacao.usuario != null ? transacao.usuario.id : null,
             transacao.valor,
             transacao.moeda,
             transacao.mcc,
             transacao.categoria,
             transacao.parceiroId,
-            transacao.status.name(),
+            transacao.status != null ? transacao.status.name() : null,
             transacao.autorizacao,
             transacao.dataEvento,
             transacao.processadoEm,

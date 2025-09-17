@@ -84,8 +84,9 @@ public class NotificacaoRepository implements PanacheRepository<Notificacao> {
 
     /** Notificações criadas dentro de um período (ordenadas por criadoEm desc). */
     public List<Notificacao> listByPeriodo(LocalDateTime de, LocalDateTime ate) {
-        de = (de == null ? LocalDateTime.MIN : de);
-        ate = (ate == null ? LocalDateTime.MAX : ate);
+        de = (de == null ? LocalDateTime.now().minusYears(10) : de);
+        ate = (ate == null ? LocalDateTime.now().plusYears(10) : ate);
+        System.out.println("DEBUG: queryByFiltros - de=" + de + ", ate=" + ate);
         return find("criadoEm between ?1 and ?2 order by criadoEm desc", de, ate).list();
     }
 
@@ -157,8 +158,9 @@ public class NotificacaoRepository implements PanacheRepository<Notificacao> {
                                                     LocalDateTime de,
                                                     LocalDateTime ate,
                                                     int page, int size) {
-        de = (de == null ? LocalDateTime.MIN : de);
-        ate = (ate == null ? LocalDateTime.MAX : ate);
+        de = (de == null ? LocalDateTime.now().minusYears(10) : de);
+        ate = (ate == null ? LocalDateTime.now().plusYears(10) : ate);
+        System.out.println("DEBUG: Main queryByFiltros - usuarioId=" + usuarioId + ", de=" + de + ", ate=" + ate);
 
         PanacheQuery<Notificacao> q;
 
@@ -206,8 +208,8 @@ public class NotificacaoRepository implements PanacheRepository<Notificacao> {
 
     public long countByStatusInPeriodo(Notificacao.Status status, LocalDateTime de, LocalDateTime ate) {
         if (status == null) return 0L;
-        de = (de == null ? LocalDateTime.MIN : de);
-        ate = (ate == null ? LocalDateTime.MAX : ate);
+        de = (de == null ? LocalDateTime.now().minusYears(10) : de);
+        ate = (ate == null ? LocalDateTime.now().plusYears(10) : ate);
         return count("status = ?1 and criadoEm between ?2 and ?3", status, de, ate);
     }
 

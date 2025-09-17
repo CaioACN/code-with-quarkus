@@ -29,7 +29,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Escutar notificações de novos resgates
     this.notificationSubscription = this.notificationService.getNotifications().subscribe(notification => {
       if (notification && notification.type === 'resgate_created') {
-        console.log('Dashboard: Notificação recebida - novo resgate criado', notification.data);
+        console.log('Painel: Notificação recebida - novo resgate criado', notification.data);
         this.carregarDashboard();
       }
     });
@@ -51,7 +51,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.loading = false;
       },
       error: (err) => {
-        this.error = 'Erro ao carregar dashboard: ' + (err.error?.message || err.message);
+        this.error = 'Erro ao carregar painel: ' + (err.error?.message || err.message);
         this.loading = false;
       }
     });

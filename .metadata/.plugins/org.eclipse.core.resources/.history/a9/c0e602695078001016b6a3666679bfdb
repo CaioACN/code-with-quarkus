@@ -1,0 +1,160 @@
+package br.com.caioacn.validapontos.mapper;
+
+import br.com.caioacn.validapontos.dto.CartaoDTO;
+import br.com.caioacn.validapontos.model.Cartao;
+import br.com.caioacn.validapontos.model.Usuario;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class CartaoMapperTest {
+
+    private Cartao novoCartao(Long id, String numero, Long idUsuario) {
+        Cartao c = new Cartao();
+        c.id = id;
+        c.numero = numero;
+        c.nomeImpresso = "NOME " + numero;
+        c.validade = LocalDate.of(2030, 12, 1);
+        c.limite = new BigDecimal("100.00");
+        if (idUsuario != null) {
+            Usuario u = new Usuario(); u.id = idUsuario;
+            c.usuario = u;
+        }
+        return c;
+    }
+
+    @Test
+    void toDTO_quandoNulo_retornaNulo() {
+        assertNull(CartaoMapper.toDTO(null));
+    }
+
+    @Test
+    void toDTO_mapeiaTodosOsCampos_comUsuario() {
+        Cartao c = novoCartao(1L, "1234", 9L);
+        CartaoDTO dto = CartaoMapper.toDTO(c);
+        assertEquals(1L, dto.id());
+        assertEquals("1234", dto.numero());
+        assertEquals("NOME 1234", dto.nomeImpresso());
+        assertEquals(LocalDate.of(2030, 12, 1), dto.validade());
+        assertEquals(new BigDecimal("100.00"), dto.limite());
+        assertEquals(9L, dto.idUsuario());
+    }
+
+    @Test
+    void toDTO_mapeiaCampos_quandoUsuarioNulo() {
+        Cartao c = novoCartao(2L, "9999", null);
+        CartaoDTO dto = CartaoMapper.toDTO(c);
+        assertEquals(2L, dto.id());
+        assertEquals("9999", dto.numero());
+        assertNull(dto.idUsuario());
+    }
+
+    @Test
+    void toDTOList_trataListaNulaEVetaNulos() {
+        // lista nula -> vazia
+        List<CartaoDTO> vazia = CartaoMapper.toDTOList(null);
+        assertNotNull(vazia);
+        assertTrue(vazia.isEmpty());
+
+        // lista com nulos no meio -> filtra
+        List<CartaoDTO> lista = CartaoMapper.toDTOList(List.of(
+                novoCartao(1L, "A", 1L),
+                null,
+                novoCartao(2L, "B", null)
+        ));
+        assertEquals(2, lista.size());
+        assertEquals("A", lista.get(0).numero());
+        assertEquals("B", lista.get(1).numero());
+    }
+
+    @Test
+    void toNewEntity_quandoNulo_retornaNulo() {
+        assertNull(CartaoMapper.toNewEntity(null, null));
+    }
+
+    @Test
+    void toNewEntity_mapeiaCamposEBindaUsuario() {
+        CartaoDTO dto = new CartaoDTO(
+                null,
+                "7777",
+                "NOME 7777",
+                LocalDate.of(2031, 1, 1),
+                new BigDecimal("500.50"),
+                88L // não é usado na criação; binding vem do parâmetro 'u'
+        );
+
+        Usuario u = new Usuario(); u.id = 88L;
+
+        Cartao c = CartaoMapper.toNewEntity(dto, u);
+        assertNull(c.id); // gerado pelo banco
+        assertEquals("7777", c.numero);
+        assertEquals("NOME 7777", c.nomeImpresso);
+        assertEquals(LocalDate.of(2031, 1, 1), c.validade);
+        assertEquals(new BigDecimal("500.50"), c.limite);
+        assertNotNull(c.usuario);
+        assertEquals(88L, c.usuario.id);
+    }
+
+    @Test
+    void applyUpdate_quandoTargetNuloOuDtoNulo_naoExplode() {
+        CartaoMapper.applyUpdate(null, new CartaoDTO(null, null, null, null, null, null), null);
+        Cartao target = new Cartao();
+        CartaoMapper.applyUpdate(target, null, null);
+        // apenas garante que não lança exceção
+    }
+
+    @Test
+    void applyUpdate_parcial_semSobrescreverCamposNulosEsemTrocarUsuarioQuandoNull() {
+        Cartao target = new Cartao();
+        target.numero = "OLD";
+        target.nomeImpresso = "NOME OLD";
+        target.validade = LocalDate.of(2030, 12, 1);
+        target.limite = new BigDecimal("100.00");
+        Usuario u = new Usuario(); u.id = 1L;
+        target.usuario = u;
+
+        CartaoDTO dto = new CartaoDTO(
+                null,
+                "NEW",
+                null, // não deve sobrescrever
+                LocalDate.of(2032, 2, 2),
+                null, // não deve sobrescrever
+                null
+        );
+
+        CartaoMapper.applyUpdate(target, dto, null);
+
+        assertEquals("NEW", target.numero);
+        assertEquals("NOME OLD", target.nomeImpresso); // manteve
+        assertEquals(LocalDate.of(2032, 2, 2), target.validade);
+        assertEquals(new BigDecimal("100.00"), target.limite); // manteve
+        assertNotNull(target.usuario);
+        assertEquals(1L, target.usuario.id); // manteve associação
+    }
+
+    @Test
+    void applyUpdate_trocaUsuarioQuandoInformado() {
+        Cartao target = new Cartao();
+        Usuario atual = new Usuario(); atual.id = 5L;
+        target.usuario = atual;
+
+        CartaoDTO dto = new CartaoDTO(
+                null,
+                "X",
+                null,
+                null,
+                null,
+                null
+        );
+
+        Usuario novo = new Usuario(); novo.id = 9L;
+
+        CartaoMapper.applyUpdate(target, dto, novo);
+        assertEquals(9L, target.usuario.id);
+        assertEquals("X", target.numero);
+    }
+}

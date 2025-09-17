@@ -3,6 +3,7 @@ package org.acme.loyalty.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.acme.loyalty.entity.*;
+import org.acme.loyalty.entity.MovimentoPontos.TipoMovimento;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import java.time.LocalDate;
@@ -141,9 +142,9 @@ public class DashboardDTO {
         dto.totalTransacoes = size(txPeriodo);
 
         List<MovimentoPontos> movPeriodo = filterBy(movimentos, m -> m != null ? m.criadoEm : null, ini, fim);
-        dto.pontosAcumulados = sumMov(movPeriodo, MovimentoPontos.TipoMovimento.ACUMULO);
-        dto.pontosExpirados  = sumMov(movPeriodo, MovimentoPontos.TipoMovimento.EXPIRACAO);
-        dto.pontosResgatados = sumMov(movPeriodo, MovimentoPontos.TipoMovimento.RESGATE);
+        dto.pontosAcumulados = sumMov(movPeriodo, TipoMovimento.ACUMULO);
+        dto.pontosExpirados  = sumMov(movPeriodo, TipoMovimento.EXPIRACAO);
+        dto.pontosResgatados = sumMov(movPeriodo, TipoMovimento.RESGATE);
 
         // Saldos consolidados
         dto.saldoTotal = (saldos == null ? 0L : saldos.stream().map(sp -> nz(sp.saldo)).reduce(0L, Long::sum));
@@ -170,7 +171,7 @@ public class DashboardDTO {
         // Séries temporais
         dto.transacoesPorDia = toSerieDia(countByDate(txPeriodo, t -> t.dataEvento));
         dto.pontosAcumuladosPorDia = toSerieDia(sumByDate(movPeriodo, m -> m.criadoEm,
-                m -> m.tipo == MovimentoPontos.TipoMovimento.ACUMULO && m.pontos != null ? Math.abs(m.pontos.longValue()) : 0L));
+                m -> m.tipo == TipoMovimento.ACUMULO && m.pontos != null ? Math.abs(m.pontos.longValue()) : 0L));
         dto.resgatesPorDia = toSerieDia(countByDate(resgPeriodo, r -> r.criadoEm));
 
         // Tops (MCC e categoria) por quantidade
@@ -208,7 +209,7 @@ public class DashboardDTO {
     }
 
     /** Soma absoluta dos pontos para um tipo de movimento (Integer -> long), null-safe. */
-    private static Long sumMov(List<MovimentoPontos> lista, MovimentoPontos.TipoMovimento tipo) {
+    private static Long sumMov(List<MovimentoPontos> lista, TipoMovimento tipo) {
         if (lista == null || lista.isEmpty()) return 0L;
         long total = lista.stream()
                 .filter(m -> m != null && m.tipo == tipo && m.pontos != null)

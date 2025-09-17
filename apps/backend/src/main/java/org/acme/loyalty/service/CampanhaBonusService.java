@@ -54,18 +54,45 @@ public class CampanhaBonusService {
 
   /**
  * Listagem com filtros simples e paginação em memória (caso o repositório ainda não tenha query paginada).
- * Filtros: nome (contains), segmento (match por regra da entidade), ativo (vigente hoje).
+ * Filtros: nome (contains), segmento (match por regra da entidade), ativo (todas as campanhas), vigente (vigente hoje).
  */
 public List<CampanhaBonusResponseDTO> listarCampanhas(String nome, String segmento,
-Boolean ativo, Integer pagina, Integer tamanho) {
+Boolean ativo, Boolean vigente, Integer pagina, Integer tamanho) {
 // defaults de paginação (evita NPE e valores inválidos)
 final int pageIndex = (pagina == null || pagina < 0) ? 0 : pagina;
 final int pageSize  = (tamanho == null || tamanho <= 0) ? 20 : tamanho;
 
-// base: vigentes ou todas
-List<CampanhaBonus> base = Boolean.TRUE.equals(ativo)
-? campanhaBonusRepository.listarVigentes(LocalDate.now())
-: campanhaBonusRepository.findAll().list();
+// base: aplicar filtro de vigência se especificado
+List<CampanhaBonus> base;
+if (Boolean.TRUE.equals(vigente)) {
+    // Filtro vigente=true: apenas campanhas vigentes hoje
+    base = campanhaBonusRepository.listarVigentes(LocalDate.now());
+} else if (Boolean.FALSE.equals(vigente)) {
+    // Filtro vigente=false: apenas campanhas não vigentes hoje
+    LocalDate hoje = LocalDate.now();
+    base = campanhaBonusRepository.findAll().list().stream()
+        .filter(c -> !c.estaVigenteEm(hoje))
+        .collect(Collectors.toList());
+} else {
+    // Sem filtro de vigência: todas as campanhas
+    base = campanhaBonusRepository.findAll().list();
+}
+
+// Aplicar filtro de ativo se especificado
+// Como não temos campo 'ativo' na entidade, consideramos:
+// ativo=true: campanhas que têm vigenciaFim null ou vigenciaFim >= hoje (não expiradas definitivamente)
+// ativo=false: campanhas que têm vigenciaFim < hoje (expiradas definitivamente)
+if (Boolean.TRUE.equals(ativo)) {
+    LocalDate hoje = LocalDate.now();
+    base = base.stream()
+        .filter(c -> c.vigenciaFim == null || !c.vigenciaFim.isBefore(hoje))
+        .collect(Collectors.toList());
+} else if (Boolean.FALSE.equals(ativo)) {
+    LocalDate hoje = LocalDate.now();
+    base = base.stream()
+        .filter(c -> c.vigenciaFim != null && c.vigenciaFim.isBefore(hoje))
+        .collect(Collectors.toList());
+}
 
 // filtros em memória
 if (nome != null && !nome.isBlank()) {
@@ -138,9 +165,16 @@ return base.subList(from, to).stream()
         CampanhaBonus campanha = campanhaBonusRepository.findByIdOptional(id)
                 .orElseThrow(() -> new NotFoundException("Campanha de bônus não encontrada: " + id));
 
-        if (campanha.vigenciaIni == null || campanha.vigenciaIni.isAfter(LocalDate.now())) {
-            campanha.vigenciaIni = LocalDate.now();
+        LocalDate hoje = LocalDate.now();
+        
+        // Ajustar data de início se necessário
+        if (campanha.vigenciaIni == null || campanha.vigenciaIni.isAfter(hoje)) {
+            campanha.vigenciaIni = hoje;
         }
+        
+        // Definir data de fim como hoje ao ativar a campanha
+        campanha.vigenciaFim = hoje;
+        
         campanhaBonusRepository.persist(campanha);
         return toCampanhaBonusResponseDTO(campanha);
     }

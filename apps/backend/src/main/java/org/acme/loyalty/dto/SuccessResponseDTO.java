@@ -67,12 +67,16 @@ public class SuccessResponseDTO<T> {
     }
     
     public String getStatusText() {
-        switch (status) {
-            case 200: return "OK";
-            case 201: return "Created";
-            case 202: return "Accepted";
-            case 204: return "No Content";
-            default: return "Status: " + status;
+        if (status == 200) {
+            return "OK";
+        } else if (status == 201) {
+            return "Created";
+        } else if (status == 202) {
+            return "Accepted";
+        } else if (status == 204) {
+            return "No Content";
+        } else {
+            return "Status: " + status;
         }
     }
 }

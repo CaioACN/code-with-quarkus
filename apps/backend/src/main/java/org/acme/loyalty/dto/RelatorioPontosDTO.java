@@ -237,49 +237,51 @@ public class RelatorioPontosDTO {
         // 1) Atualiza série temporal (bucket por dia)
         LocalDate dia = quando.toLocalDate();
         BucketSerie b = ensureBucket(dia);
-        switch (tipo) {
-            case ACUMULO   -> b.acumulo += Math.abs(pontos);
-            case EXPIRACAO -> b.expiracao += Math.abs(pontos);
-            case RESGATE   -> b.resgate += Math.abs(pontos);
-            case ESTORNO   -> b.estorno += Math.abs(pontos);
-            case AJUSTE    -> b.ajuste += pontos; // ajuste mantém sinal
+        if (tipo == TipoMovimento.ACUMULO) {
+            b.acumulo += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.EXPIRACAO) {
+            b.expiracao += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.RESGATE) {
+            b.resgate += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.ESTORNO) {
+            b.estorno += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.AJUSTE) {
+            b.ajuste += pontos; // ajuste mantém sinal
         }
         b.recompute();
 
         // 2) Atualiza totais globais
-        switch (tipo) {
-            case ACUMULO   -> totais.acumulo += Math.abs(pontos);
-            case EXPIRACAO -> totais.expiracao += Math.abs(pontos);
-            case RESGATE   -> totais.resgate += Math.abs(pontos);
-            case ESTORNO   -> totais.estorno += Math.abs(pontos);
-            case AJUSTE    -> totais.ajuste += pontos; // pode ser negativo
+        if (tipo == TipoMovimento.ACUMULO) {
+            totais.acumulo += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.EXPIRACAO) {
+            totais.expiracao += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.RESGATE) {
+            totais.resgate += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.ESTORNO) {
+            totais.estorno += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.AJUSTE) {
+            totais.ajuste += pontos; // pode ser negativo
         }
 
         // 3) Atualiza por usuário/cartão
         LinhaUsuario lu = ensureUsuario(usuarioId, usuarioNome, usuarioEmail);
         ItemCartao ic = lu.ensureCartao(cartaoId, cartaoMasc);
 
-        switch (tipo) {
-            case ACUMULO -> {
-                lu.totais.acumulo += Math.abs(pontos);
-                ic.totais.acumulo += Math.abs(pontos);
-            }
-            case EXPIRACAO -> {
-                lu.totais.expiracao += Math.abs(pontos);
-                ic.totais.expiracao += Math.abs(pontos);
-            }
-            case RESGATE -> {
-                lu.totais.resgate += Math.abs(pontos);
-                ic.totais.resgate += Math.abs(pontos);
-            }
-            case ESTORNO -> {
-                lu.totais.estorno += Math.abs(pontos);
-                ic.totais.estorno += Math.abs(pontos);
-            }
-            case AJUSTE -> {
-                lu.totais.ajuste += pontos;
-                ic.totais.ajuste += pontos;
-            }
+        if (tipo == TipoMovimento.ACUMULO) {
+            lu.totais.acumulo += Math.abs(pontos);
+            ic.totais.acumulo += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.EXPIRACAO) {
+            lu.totais.expiracao += Math.abs(pontos);
+            ic.totais.expiracao += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.RESGATE) {
+            lu.totais.resgate += Math.abs(pontos);
+            ic.totais.resgate += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.ESTORNO) {
+            lu.totais.estorno += Math.abs(pontos);
+            ic.totais.estorno += Math.abs(pontos);
+        } else if (tipo == TipoMovimento.AJUSTE) {
+            lu.totais.ajuste += pontos;
+            ic.totais.ajuste += pontos;
         }
     }
 

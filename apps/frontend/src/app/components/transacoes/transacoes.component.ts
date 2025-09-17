@@ -44,18 +44,22 @@ export class TransacoesComponent implements OnInit {
 
   // Formulário de nova transação
   novaTransacao: TransacaoRequestDTO = {
-    cartaoId: 0,
-    usuarioId: 0,
+    cartaoId: 1,
+    usuarioId: 4,
     valor: 0,
     moeda: 'BRL',
     mcc: '',
     categoria: '',
     parceiroId: undefined,
-    dataEvento: new Date().toISOString().slice(0, 16),
+    dataEvento: this.getLocalDateTimeString(),
     autorizacao: ''
   };
   showForm = false;
   submitting = false;
+  
+  // Notificações e Modal de Confirmação
+  notificacao: { mensagem: string; tipo: 'success' | 'error' } | null = null;
+  modalConfirmacao: { mensagem: string; acao: () => void } | null = null;
 
   // Status options
   statusOptions = [
@@ -122,6 +126,31 @@ export class TransacoesComponent implements OnInit {
   }
 
   criarTransacao(): void {
+    // Validações básicas
+    if (!this.novaTransacao.cartaoId || this.novaTransacao.cartaoId <= 0) {
+      this.error = 'ID do cartão deve ser maior que zero';
+      return;
+    }
+    
+    if (!this.novaTransacao.usuarioId || this.novaTransacao.usuarioId <= 0) {
+      this.error = 'ID do usuário deve ser maior que zero';
+      return;
+    }
+    
+    if (!this.novaTransacao.valor || this.novaTransacao.valor <= 0) {
+      this.error = 'Valor deve ser maior que zero';
+      return;
+    }
+
+    // Garantir que dataEvento está no formato correto
+    if (!this.novaTransacao.dataEvento) {
+      this.novaTransacao.dataEvento = new Date().toISOString().slice(0, 19);
+    } else {
+      // Converter para formato yyyy-MM-ddTHH:mm:ss
+      const date = new Date(this.novaTransacao.dataEvento);
+      this.novaTransacao.dataEvento = date.toISOString().slice(0, 19);
+    }
+
     this.submitting = true;
     this.error = null;
 
@@ -131,24 +160,38 @@ export class TransacoesComponent implements OnInit {
         this.showForm = false;
         this.resetarFormulario();
         this.carregarTransacoes();
-        alert('Transação criada com sucesso!');
+        // Criar notificação sem mostrar localhost:4200
+        this.mostrarNotificacao('Transação criada com sucesso!', 'success');
       },
       error: (err) => {
-        this.error = 'Erro ao criar transação: ' + (err.error?.message || err.message);
+        let errorMessage = 'Erro ao criar transação';
+        if (err.error?.message) {
+          errorMessage += ': ' + err.error.message;
+        } else if (err.message) {
+          errorMessage += ': ' + err.message;
+        } else if (err.status === 404) {
+          errorMessage += ': Usuário ou cartão não encontrado';
+        } else if (err.status === 400) {
+          errorMessage += ': Dados inválidos';
+        }
+        this.error = errorMessage;
         this.submitting = false;
       }
     });
   }
 
   estornarTransacao(transacao: TransacaoResponseDTO): void {
-    if (!confirm(`Deseja estornar a transação ${transacao.id}?`)) {
-      return;
-    }
+    this.mostrarConfirmacao(
+      `Deseja estornar a transação ${transacao.id}?`,
+      () => this.executarEstornoTransacao(transacao)
+    );
+  }
 
+  private executarEstornoTransacao(transacao: TransacaoResponseDTO): void {
     this.transacaoService.estornarTransacao(transacao.id).subscribe({
       next: (response: SuccessResponse<TransacaoResponseDTO>) => {
         this.carregarTransacoes();
-        alert('Transação estornada com sucesso!');
+        this.mostrarNotificacao('Transação estornada com sucesso!', 'success');
       },
       error: (err) => {
         this.error = 'Erro ao estornar transação: ' + (err.error?.message || err.message);
@@ -158,16 +201,30 @@ export class TransacoesComponent implements OnInit {
 
   resetarFormulario(): void {
     this.novaTransacao = {
-      cartaoId: 0,
-      usuarioId: 0,
+      cartaoId: 1,
+      usuarioId: 4,
       valor: 0,
       moeda: 'BRL',
       mcc: '',
       categoria: '',
       parceiroId: undefined,
-      dataEvento: new Date().toISOString().slice(0, 16),
+      dataEvento: this.getLocalDateTimeString(),
       autorizacao: ''
     };
+  }
+
+  private getLocalDateTimeString(): string {
+    // Obtém a data/hora atual no timezone local do usuário
+    const now = new Date();
+    // Converte para o formato ISO mas mantém o timezone local
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   }
 
   formatarValor(valor: number): string {
@@ -205,5 +262,32 @@ export class TransacoesComponent implements OnInit {
     }
     
     return paginas;
+  }
+
+  mostrarNotificacao(mensagem: string, tipo: 'success' | 'error'): void {
+    this.notificacao = { mensagem, tipo };
+    // Auto-remover após 3 segundos
+    setTimeout(() => {
+      this.notificacao = null;
+    }, 3000);
+  }
+
+  fecharNotificacao(): void {
+    this.notificacao = null;
+  }
+
+  mostrarConfirmacao(mensagem: string, acao: () => void): void {
+    this.modalConfirmacao = { mensagem, acao };
+  }
+
+  confirmarAcao(): void {
+    if (this.modalConfirmacao) {
+      this.modalConfirmacao.acao();
+      this.modalConfirmacao = null;
+    }
+  }
+
+  cancelarAcao(): void {
+    this.modalConfirmacao = null;
   }
 }

@@ -217,26 +217,22 @@ public class RelatorioResgatesDTO {
         b.pontosSolicitados += Math.max(0L, pontos);
 
         // Contadores por status
-        switch (statusFinal) {
-            case PENDENTE -> totais.pendentes++;
-            case APROVADO -> {
-                totais.aprovados++;
-                b.aprovados++;
-            }
-            case CONCLUIDO -> {
-                totais.concluidos++;
-                b.concluidos++;
-                b.pontosDebitados += Math.max(0L, pontos);
-                totais.pontosDebitados += Math.max(0L, pontos);
-            }
-            case NEGADO -> {
-                totais.negados++;
-                b.negados++;
-            }
-            case CANCELADO -> {
-                totais.cancelados++;
-                b.cancelados++;
-            }
+        if (statusFinal == Status.PENDENTE) {
+            totais.pendentes++;
+        } else if (statusFinal == Status.APROVADO) {
+            totais.aprovados++;
+            b.aprovados++;
+        } else if (statusFinal == Status.CONCLUIDO) {
+            totais.concluidos++;
+            b.concluidos++;
+            b.pontosDebitados += Math.max(0L, pontos);
+            totais.pontosDebitados += Math.max(0L, pontos);
+        } else if (statusFinal == Status.NEGADO) {
+            totais.negados++;
+            b.negados++;
+        } else if (statusFinal == Status.CANCELADO) {
+            totais.cancelados++;
+            b.cancelados++;
         }
 
         // Pontos agregados

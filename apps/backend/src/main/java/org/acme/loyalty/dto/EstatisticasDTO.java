@@ -3,6 +3,7 @@ package org.acme.loyalty.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.acme.loyalty.entity.*;
+import org.acme.loyalty.entity.MovimentoPontos.TipoMovimento;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -144,9 +145,9 @@ public class EstatisticasDTO {
         dto.valorMedioTransacao = avgValores(txPeriodo, dto.valorTransacionadoTotal);
 
         // Pontos
-        dto.pontosAcumulados = sumMov(movPeriodo, MovimentoPontos.TipoMovimento.ACUMULO);
-        dto.pontosResgatados = sumMov(movPeriodo, MovimentoPontos.TipoMovimento.RESGATE);
-        dto.pontosExpirados  = sumMov(movPeriodo, MovimentoPontos.TipoMovimento.EXPIRACAO);
+        dto.pontosAcumulados = sumMov(movPeriodo, TipoMovimento.ACUMULO);
+        dto.pontosResgatados = sumMov(movPeriodo, TipoMovimento.RESGATE);
+        dto.pontosExpirados  = sumMov(movPeriodo, TipoMovimento.EXPIRACAO);
 
         // Saldos
         dto.saldoTotal = sumSaldos(saldos);
@@ -209,7 +210,7 @@ public class EstatisticasDTO {
     }
 
     /** Soma absoluta dos pontos por tipo. */
-    private static Long sumMov(List<MovimentoPontos> lista, MovimentoPontos.TipoMovimento tipo) {
+    private static Long sumMov(List<MovimentoPontos> lista, TipoMovimento tipo) {
         if (lista == null || lista.isEmpty()) return 0L;
         long total = lista.stream()
                 .filter(m -> m != null && m.tipo == tipo && m.pontos != null)

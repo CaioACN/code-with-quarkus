@@ -64,14 +64,20 @@ public class RecompensaDTO {
     public String getDescricaoTipo() {
         if (tipo == null) return "Outro";
         
-        switch (tipo) {
-            case "PRODUTO_FISICO": return "Produto Físico";
-            case "PRODUTO_DIGITAL": return "Produto Digital";
-            case "DESCONTO": return "Desconto";
-            case "CASHBACK": return "Cashback";
-            case "MILHAS": return "Milhas";
-            case "EXPERIENCIA": return "Experiência";
-            default: return "Outro";
+        if ("PRODUTO_FISICO".equals(tipo)) {
+            return "Produto Físico";
+        } else if ("PRODUTO_DIGITAL".equals(tipo)) {
+            return "Produto Digital";
+        } else if ("DESCONTO".equals(tipo)) {
+            return "Desconto";
+        } else if ("CASHBACK".equals(tipo)) {
+            return "Cashback";
+        } else if ("MILHAS".equals(tipo)) {
+            return "Milhas";
+        } else if ("EXPERIENCIA".equals(tipo)) {
+            return "Experiência";
+        } else {
+            return "Outro";
         }
     }
     

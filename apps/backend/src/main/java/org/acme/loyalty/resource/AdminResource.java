@@ -135,6 +135,18 @@ public class AdminResource {
         }
     }
 
+    @GET
+    @Path("/processar-teste")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response processarTeste() {
+        try {
+            long pontosGerados = adminService.processarTransacaoPontuacao(9L, 1.0);
+            return Response.ok("{\"success\": true, \"pontosGerados\": " + pontosGerados + ", \"transacaoId\": 9}").build();
+        } catch (Exception e) {
+            return Response.status(500).entity("{\"error\": \"" + e.getMessage() + "\"}").build();
+        }
+    }
+
     @POST
     @Path("/pontos/estorno")
     @Operation(summary = "Realizar estorno de pontos", 

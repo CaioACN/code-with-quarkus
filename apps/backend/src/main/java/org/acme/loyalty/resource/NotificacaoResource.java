@@ -303,4 +303,31 @@ public class NotificacaoResource {
                     .build();
         }
     }
+
+    @GET
+    @Path("/debug/usuario/{usuarioId}")
+    @Operation(summary = "Debug - Verificar se usuário existe", 
+               description = "Endpoint de debug para verificar se o usuário existe no banco")
+    public Response debugUsuario(
+            @PathParam("usuarioId") Long usuarioId) {
+        
+        try {
+            LOG.info("Debug - Verificando usuário: " + usuarioId);
+            
+            var usuario = notificacaoService.debugUsuario(usuarioId);
+            
+            if (usuario.isPresent()) {
+                return Response.ok(SuccessResponseDTO.ok("Usuário encontrado", usuario.get())).build();
+            } else {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ErrorResponseDTO.notFound("Usuário não encontrado: " + usuarioId))
+                        .build();
+            }
+        } catch (Exception e) {
+            LOG.error("Erro no debug do usuário: " + e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ErrorResponseDTO.internalError("Erro no debug: " + e.getMessage()))
+                    .build();
+        }
+    }
 }

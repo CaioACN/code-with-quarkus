@@ -3,13 +3,13 @@
 -- Sistema de Pontos do Cartão (Quarkus/Java 17)
 -- =====================================================
 
--- Configurações iniciais
-SET search_path TO loyalty, public;
-
 -- =====================================================
 -- 1. CRIAÇÃO DO SCHEMA LOYALTY
 -- =====================================================
 CREATE SCHEMA IF NOT EXISTS loyalty;
+
+-- Configurações iniciais
+SET search_path TO loyalty, public;
 
 -- =====================================================
 -- 2. TABELAS DO SISTEMA DE LOYALTY
@@ -258,24 +258,6 @@ CREATE INDEX IF NOT EXISTS idx_notificacao_usuario ON loyalty.notificacao(usuari
 CREATE INDEX IF NOT EXISTS idx_notificacao_status ON loyalty.notificacao(status);
 
 -- =====================================================
--- 4. DADOS INICIAIS (SEEDS)
+-- 4. DADOS INICIAIS (SEEDS) - REMOVIDOS TEMPORARIAMENTE
 -- =====================================================
-
--- Inserir regras de conversão básicas
-INSERT INTO loyalty.regra_conversao (nome, multiplicador, vigencia_ini, prioridade, ativo, criado_em)
-VALUES 
-    ('Regra Geral', 0.01, CURRENT_TIMESTAMP, 1, true, CURRENT_TIMESTAMP),
-    ('Supermercados', 0.02, CURRENT_TIMESTAMP, 2, true, CURRENT_TIMESTAMP),
-    ('Postos de Gasolina', 0.015, CURRENT_TIMESTAMP, 2, true, CURRENT_TIMESTAMP),
-    ('Restaurantes', 0.025, CURRENT_TIMESTAMP, 2, true, CURRENT_TIMESTAMP)
-ON CONFLICT DO NOTHING;
-
--- Inserir recompensas básicas
-INSERT INTO loyalty.recompensa (tipo, descricao, custo_pontos, estoque, ativo, criado_em)
-VALUES 
-    ('CASHBACK', 'Cashback R$ 10,00', 1000, 1000, true, CURRENT_TIMESTAMP),
-    ('CASHBACK', 'Cashback R$ 50,00', 5000, 500, true, CURRENT_TIMESTAMP),
-    ('GIFT', 'Vale Presente R$ 25,00', 2500, 200, true, CURRENT_TIMESTAMP),
-    ('MILHAS', '1.000 Milhas Aéreas', 2000, 1000, true, CURRENT_TIMESTAMP),
-    ('PRODUTO', 'Fone de Ouvido Bluetooth', 15000, 50, true, CURRENT_TIMESTAMP)
-ON CONFLICT DO NOTHING;
+-- Os dados iniciais serão inseridos após a confirmação de que as tabelas foram criadas corretamente

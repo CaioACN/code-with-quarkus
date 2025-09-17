@@ -6,6 +6,7 @@ import org.acme.loyalty.dto.*;
 import org.acme.loyalty.entity.MovimentoPontos;
 import org.acme.loyalty.entity.Resgate;
 import org.acme.loyalty.entity.Transacao;
+import org.acme.loyalty.entity.Transacao.StatusTransacao;
 import org.acme.loyalty.repository.*;
 
 import java.text.Normalizer;
@@ -275,17 +276,17 @@ public class RelatorioService {
         exportacao.status = "PROCESSANDO";
 
         try {
-            switch (String.valueOf(tipoRelatorio).toUpperCase(Locale.ROOT)) {
-                case "PONTOS_ACUMULADOS":
-                case "PONTOS_EXPIRADOS":
-                case "VOLUME_TRANSACOES":
-                case "STATUS_RESGATES":
-                case "EFETIVIDADE_REGRAS":
-                case "EFETIVIDADE_CAMPANHAS":
-                case "RANKING_USUARIOS":
-                    break;
-                default:
-                    throw new IllegalArgumentException("Tipo de relatório não suportado: " + tipoRelatorio);
+            String upperTipoRelatorio = String.valueOf(tipoRelatorio).toUpperCase(Locale.ROOT);
+            if ("PONTOS_ACUMULADOS".equals(upperTipoRelatorio) ||
+                "PONTOS_EXPIRADOS".equals(upperTipoRelatorio) ||
+                "VOLUME_TRANSACOES".equals(upperTipoRelatorio) ||
+                "STATUS_RESGATES".equals(upperTipoRelatorio) ||
+                "EFETIVIDADE_REGRAS".equals(upperTipoRelatorio) ||
+                "EFETIVIDADE_CAMPANHAS".equals(upperTipoRelatorio) ||
+                "RANKING_USUARIOS".equals(upperTipoRelatorio)) {
+                // Tipo válido, continua processamento
+            } else {
+                throw new IllegalArgumentException("Tipo de relatório não suportado: " + tipoRelatorio);
             }
             exportacao.status = "CONCLUIDO";
             exportacao.arquivoUrl = "/relatorios/" + tipoRelatorio.toLowerCase(Locale.ROOT) + "_"
@@ -338,7 +339,7 @@ public class RelatorioService {
         }
     }
 
-    private static RelatorioTransacoesDTO.StatusTransacao mapTransacaoStatus(Transacao.StatusTransacao st) {
+    private static RelatorioTransacoesDTO.StatusTransacao mapTransacaoStatus(StatusTransacao st) {
         if (st == null) return RelatorioTransacoesDTO.StatusTransacao.PENDENTE;
         try {
             return RelatorioTransacoesDTO.StatusTransacao.valueOf(st.name());
@@ -360,30 +361,23 @@ public class RelatorioService {
                 .toUpperCase(Locale.ROOT);
     
         // Aceita alguns sinônimos/comuns
-        switch (norm) {
-            case "PENDENTE":
-                return Resgate.StatusResgate.PENDENTE;
-            case "APROVADO":
-            case "APROVADA":
-                return Resgate.StatusResgate.APROVADO;
-            case "CONCLUIDO":
-            case "CONCLUIDA":
-                return Resgate.StatusResgate.CONCLUIDO;
-            case "NEGADO":
-            case "NEGADA":
-            case "REJEITADO":
-            case "REJEITADA":
-                return Resgate.StatusResgate.NEGADO;
-            case "CANCELADO":
-            case "CANCELADA":
-                return Resgate.StatusResgate.CANCELADO;
-            default:
-                // fallback: tenta casar exatamente com o enum após normalização
-                try {
-                    return Resgate.StatusResgate.valueOf(norm);
-                } catch (Exception ex) {
-                    return null;
-                }
+        if ("PENDENTE".equals(norm)) {
+            return Resgate.StatusResgate.PENDENTE;
+        } else if ("APROVADO".equals(norm) || "APROVADA".equals(norm)) {
+            return Resgate.StatusResgate.APROVADO;
+        } else if ("CONCLUIDO".equals(norm) || "CONCLUIDA".equals(norm)) {
+            return Resgate.StatusResgate.CONCLUIDO;
+        } else if ("NEGADO".equals(norm) || "NEGADA".equals(norm) || "REJEITADO".equals(norm) || "REJEITADA".equals(norm)) {
+            return Resgate.StatusResgate.NEGADO;
+        } else if ("CANCELADO".equals(norm) || "CANCELADA".equals(norm)) {
+            return Resgate.StatusResgate.CANCELADO;
+        } else {
+            // fallback: tenta casar exatamente com o enum após normalização
+            try {
+                return Resgate.StatusResgate.valueOf(norm);
+            } catch (Exception ex) {
+                return null;
+            }
         }
     }
 

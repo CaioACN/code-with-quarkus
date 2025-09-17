@@ -11,6 +11,7 @@ import org.acme.loyalty.dto.*;
 import org.acme.loyalty.entity.MovimentoPontos;
 import org.acme.loyalty.entity.SaldoPontos;
 import org.acme.loyalty.entity.Usuario;
+import org.acme.loyalty.entity.Transacao.StatusTransacao;
 import org.acme.loyalty.repository.*;
 
 import org.jboss.logging.Logger;
@@ -84,10 +85,13 @@ public class AdminService {
     
         if (ini == null || fim == null) {
             LocalDate hoje = LocalDate.now();
-            switch (periodo != null ? periodo.toUpperCase() : "") {
-                case "SEMANA" -> { ini = hoje.minusDays(6).atStartOfDay(); fim = hoje.atTime(23,59,59); }
-                case "MES"    -> { ini = hoje.withDayOfMonth(1).atStartOfDay(); fim = hoje.atTime(23,59,59); }
-                default       -> { ini = hoje.atStartOfDay(); fim = hoje.atTime(23,59,59); }
+            String periodoUpper = periodo != null ? periodo.toUpperCase() : "";
+            if ("SEMANA".equals(periodoUpper)) {
+                ini = hoje.minusDays(6).atStartOfDay(); fim = hoje.atTime(23,59,59);
+            } else if ("MES".equals(periodoUpper)) {
+                ini = hoje.withDayOfMonth(1).atStartOfDay(); fim = hoje.atTime(23,59,59);
+            } else {
+                ini = hoje.atStartOfDay(); fim = hoje.atTime(23,59,59);
             }
         }
     
@@ -202,25 +206,22 @@ private static final Logger LOG = Logger.getLogger(AdminService.class);
 
 @Transactional
 public void executarManutencao(String tipo, Map<String, Object> parametros) {
-    switch (tipo) {
-        case "LIMPEZA_LOGS" -> {
-            int anos = ((Number) parametros.getOrDefault("anos", 5)).intValue();
-            LocalDateTime limite = LocalDate.now().minusYears(anos).atStartOfDay();
-            long deletados = movimentoPontosRepository.deleteOlderThan(limite);
-            LOG.infof("LIMPEZA_LOGS: %d movimentos removidos (anteriores a %s).", deletados, limite);
+    if ("LIMPEZA_LOGS".equals(tipo)) {
+        int anos = ((Number) parametros.getOrDefault("anos", 5)).intValue();
+        LocalDateTime limite = LocalDate.now().minusYears(anos).atStartOfDay();
+        long deletados = movimentoPontosRepository.deleteOlderThan(limite);
+        LOG.infof("LIMPEZA_LOGS: %d movimentos removidos (anteriores a %s).", deletados, limite);
+    } else if ("VALIDACAO_INTEGRIDADE".equals(tipo)) {
+        var inconsistencias = saldoPontosRepository.validarSaldos();
+        if (!inconsistencias.isEmpty()) {
+            throw new IllegalStateException("Inconsistências de saldo: " + inconsistencias);
         }
-        case "VALIDACAO_INTEGRIDADE" -> {
-            var inconsistencias = saldoPontosRepository.validarSaldos();
-            if (!inconsistencias.isEmpty()) {
-                throw new IllegalStateException("Inconsistências de saldo: " + inconsistencias);
-            }
-            LOG.info("VALIDACAO_INTEGRIDADE: sem inconsistências.");
-        }
-        case "REINDEXACAO" -> {
-            em.createNativeQuery("REINDEX SCHEMA loyalty").executeUpdate();
-            LOG.info("REINDEXACAO: schema 'loyalty' reindexado com sucesso.");
-        }
-        default -> throw new IllegalArgumentException("Tipo de manutenção não suportado: " + tipo);
+        LOG.info("VALIDACAO_INTEGRIDADE: sem inconsistências.");
+    } else if ("REINDEXACAO".equals(tipo)) {
+        em.createNativeQuery("REINDEX SCHEMA loyalty").executeUpdate();
+        LOG.info("REINDEXACAO: schema 'loyalty' reindexado com sucesso.");
+    } else {
+        throw new IllegalArgumentException("Tipo de manutenção não suportado: " + tipo);
     }
 }
 
@@ -321,7 +322,7 @@ public void executarManutencao(String tipo, Map<String, Object> parametros) {
         t.categoria = categoria;
         t.parceiroId = parceiroId;
         t.dataEvento = (dataEvento != null ? dataEvento : LocalDateTime.now());
-        t.status = org.acme.loyalty.entity.Transacao.StatusTransacao.APROVADA;
+        t.status = StatusTransacao.APROVADA;
 
         transacaoRepository.persist(t);
 

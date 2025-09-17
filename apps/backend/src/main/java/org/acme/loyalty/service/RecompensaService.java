@@ -29,29 +29,15 @@ public class RecompensaService {
 
     @Transactional
     public RecompensaResponseDTO criarRecompensa(RecompensaRequestDTO req) {
-        // Validação básica simplificada
-        if (req == null) {
-            throw new IllegalArgumentException("Request não pode ser nulo");
-        }
-        if (req.descricao == null || req.descricao.trim().isEmpty()) {
-            throw new IllegalArgumentException("Descrição é obrigatória");
-        }
-        if (req.custoPontos == null || req.custoPontos <= 0) {
-            throw new IllegalArgumentException("Custo em pontos deve ser maior que zero");
-        }
-        if (req.estoque == null || req.estoque < 0) {
-            throw new IllegalArgumentException("Estoque deve ser maior ou igual a zero");
-        }
-        // Validação e conversão do tipo
+        // Usar método de validação centralizado
+        validarRecompensa(req);
+        
+        // Conversão do tipo
         Recompensa.TipoRecompensa tipoEnum;
         if (req.tipo == null || req.tipo.trim().isEmpty()) {
             tipoEnum = Recompensa.TipoRecompensa.PRODUTO; // Valor padrão
         } else {
-            try {
-                tipoEnum = Recompensa.TipoRecompensa.valueOf(req.tipo.toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Tipo de recompensa inválido: " + req.tipo + ". Valores válidos: MILHAS, GIFT, CASHBACK, PRODUTO");
-            }
+            tipoEnum = Recompensa.TipoRecompensa.valueOf(req.tipo.toUpperCase(Locale.ROOT));
         }
 
         // unicidade por descrição (case-insensitive)
@@ -264,17 +250,77 @@ public class RecompensaService {
     // ===================== Helpers =====================
 
     private void validarRecompensa(RecompensaRequestDTO req) {
-        if (req.tipo == null) {
+        // Validação do request
+        if (req == null) {
+            throw new IllegalArgumentException("Request não pode ser nulo");
+        }
+        
+        // Validação do tipo
+        if (req.tipo == null || req.tipo.trim().isEmpty()) {
             throw new IllegalArgumentException("Tipo da recompensa é obrigatório");
         }
-        if (req.descricao == null || req.descricao.isBlank()) {
+        try {
+            Recompensa.TipoRecompensa.valueOf(req.tipo.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Tipo de recompensa inválido: " + req.tipo + ". Valores válidos: MILHAS, GIFT, CASHBACK, PRODUTO");
+        }
+        
+        // Validação da descrição
+        if (req.descricao == null || req.descricao.trim().isEmpty()) {
             throw new IllegalArgumentException("Descrição da recompensa é obrigatória");
         }
+        if (req.descricao.length() > 255) {
+            throw new IllegalArgumentException("Descrição não pode ter mais de 255 caracteres");
+        }
+        
+        // Validação do custo em pontos
         if (req.custoPontos == null || req.custoPontos <= 0) {
             throw new IllegalArgumentException("Custo em pontos deve ser maior que zero");
         }
+        if (req.custoPontos > 1000000) {
+            throw new IllegalArgumentException("Custo em pontos não pode ser maior que 1.000.000");
+        }
+        
+        // Validação do estoque
         if (req.estoque == null || req.estoque < 0) {
             throw new IllegalArgumentException("Estoque deve ser maior ou igual a zero");
+        }
+        if (req.estoque > 999999) {
+            throw new IllegalArgumentException("Estoque não pode ser maior que 999.999");
+        }
+        
+        // Validação do parceiroId (se fornecido)
+        if (req.parceiroId != null && req.parceiroId <= 0) {
+            throw new IllegalArgumentException("ID do parceiro deve ser maior que zero");
+        }
+        
+        // Validação dos detalhes (se fornecido)
+        if (req.detalhes != null && req.detalhes.length() > 1000) {
+            throw new IllegalArgumentException("Detalhes não podem ter mais de 1000 caracteres");
+        }
+        
+        // Validação da URL da imagem (se fornecida)
+        if (req.imagemUrl != null && !req.imagemUrl.trim().isEmpty()) {
+            if (req.imagemUrl.length() > 500) {
+                throw new IllegalArgumentException("URL da imagem não pode ter mais de 500 caracteres");
+            }
+            if (!req.imagemUrl.startsWith("http://") && !req.imagemUrl.startsWith("https://")) {
+                throw new IllegalArgumentException("URL da imagem deve começar com http:// ou https://");
+            }
+        }
+        
+        // Validação da data de validade (se fornecida) - simplificada para testes
+        if (req.validadeRecompensa != null && !req.validadeRecompensa.trim().isEmpty()) {
+            try {
+                // Apenas verificar se o formato é válido, sem validar se é futuro
+                if (req.validadeRecompensa.contains("T")) {
+                    LocalDateTime.parse(req.validadeRecompensa);
+                } else {
+                    LocalDateTime.parse(req.validadeRecompensa + "T23:59:59");
+                }
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Formato de data inválido para validadeRecompensa. Use formato: YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss");
+            }
         }
     }
 

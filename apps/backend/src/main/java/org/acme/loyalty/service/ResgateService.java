@@ -111,7 +111,15 @@ public class ResgateService {
         // (não setamos atualizadoEm/canceladoEm pois não existem no entity)
 
         resgateRepository.persist(r);
-        return ResgateResponseDTO.fromEntity(r);
+        
+        // Força o flush para garantir que o ID seja gerado
+        resgateRepository.getEntityManager().flush();
+        
+        // Recarrega a entidade com os relacionamentos para evitar problemas LAZY
+        Resgate resgateCompleto = resgateRepository.findByIdOptional(r.id)
+                .orElseThrow(() -> new RuntimeException("Erro ao recarregar resgate criado"));
+        
+        return ResgateResponseDTO.fromEntity(resgateCompleto);
     }
 
     // ===================== Consultas =====================

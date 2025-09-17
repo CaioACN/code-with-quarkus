@@ -1,0 +1,123 @@
+package br.com.caioacn.validapontos.service;
+
+import br.com.caioacn.validapontos.dto.CartaoDTO;
+import br.com.caioacn.validapontos.dto.PageResponse;
+import br.com.caioacn.validapontos.mapper.CartaoMapper;
+import br.com.caioacn.validapontos.model.Cartao;
+import br.com.caioacn.validapontos.model.Usuario;
+import br.com.caioacn.validapontos.repository.CartaoRepository;
+import br.com.caioacn.validapontos.repository.UsuarioRepository;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import javax.transaction.Transactional;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+import java.util.List;
+
+@ApplicationScoped
+public class CartaoService {
+
+    @Inject CartaoRepository cartaoRepository;   // PanacheRepositoryBase<Cartao, Long>
+    @Inject UsuarioRepository usuarioRepository; // PanacheRepositoryBase<Usuario, Long>
+
+    /* CREATE */
+    @Transactional
+    public Long salvar(CartaoDTO dto) {
+        if (dto == null) {
+            throw new WebApplicationException("Payload inválido.", Response.Status.BAD_REQUEST);
+        }
+
+        Usuario usuario = getUsuarioOr404(dto.idUsuario());
+
+        if (cartaoRepository.existsNumero(dto.numero(), null)) {
+            throw new WebApplicationException("Número de cartão já cadastrado.", Response.Status.CONFLICT);
+        }
+
+        Cartao c = CartaoMapper.toNewEntity(dto, usuario);
+        cartaoRepository.persist(c);
+        return c.id;
+    }
+
+    /* READ by ID */
+    public CartaoDTO buscarPorId(Long id) {
+        Cartao c = cartaoRepository.findByIdWithUsuario(id);
+        if (c == null) throw new NotFoundException("Cartão não encontrado: id=" + id);
+        return CartaoMapper.toDTO(c);
+    }
+
+    /* READ paginado */
+    public PageResponse<CartaoDTO> listar(int page, int size) {
+        if (page < 0) page = 0;
+        if (size <= 0) size = 10;
+
+        long total = cartaoRepository.countAll();
+        List<CartaoDTO> items = CartaoMapper.toDTOList(
+                cartaoRepository.listPagedWithUsuario(page, size)
+        );
+
+        int totalPages = (int) Math.ceil((double) total / (double) size);
+        boolean hasPrevious = page > 0;
+        boolean hasNext = (long) (page + 1) * size < total;
+
+        return new PageResponse<>(
+                items,
+                page,
+                size,
+                total,
+                totalPages,
+                hasNext,
+                hasPrevious
+        );
+    }
+
+    /* READ por usuário */
+    public List<CartaoDTO> listarPorUsuario(Long idUsuario) {
+        return CartaoMapper.toDTOList(
+                cartaoRepository.listByUsuario(idUsuario)
+        );
+    }
+
+    /* UPDATE */
+    @Transactional
+    public void atualizar(Long id, CartaoDTO dto) {
+        if (dto == null) {
+            throw new WebApplicationException("Payload inválido.", Response.Status.BAD_REQUEST);
+        }
+
+        Cartao c = cartaoRepository.findByIdWithUsuario(id);
+        if (c == null) throw new NotFoundException("Cartão não encontrado: id=" + id);
+
+        if (dto.numero() != null && !dto.numero().equals(c.numero)) {
+            if (cartaoRepository.existsNumero(dto.numero(), id)) {
+                throw new WebApplicationException("Número de cartão já cadastrado.", Response.Status.CONFLICT);
+            }
+        }
+
+        Usuario novoUsuario = null;
+        if (dto.idUsuario() != null && (c.usuario == null || !dto.idUsuario().equals(c.usuario.id))) {
+            novoUsuario = getUsuarioOr404(dto.idUsuario());
+        }
+
+        CartaoMapper.applyUpdate(c, dto, novoUsuario);
+    }
+
+    /* DELETE */
+    @Transactional
+    public void deletar(Long id) {
+        boolean removed = cartaoRepository.deleteById(id);
+        if (!removed) throw new NotFoundException("Cartão não encontrado: id=" + id);
+    }
+
+    /* Helpers */
+
+    private Usuario getUsuarioOr404(Long idUsuario) {
+        if (idUsuario == null)
+            throw new WebApplicationException("idUsuario é obrigatório.", Response.Status.BAD_REQUEST);
+
+        Usuario u = usuarioRepository.findById(idUsuario);
+        if (u == null) throw new NotFoundException("Usuário não encontrado: id=" + idUsuario);
+        return u;
+    }
+}
