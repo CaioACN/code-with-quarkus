@@ -308,6 +308,12 @@ public class ResgateService {
         return ResgateResponseDTO.fromEntity(r);
     }
 
+    // ===================== Aprovação, Conclusão e Negação =====================
+
+
+
+
+
     // ===================== Validações =====================
 
     private void validarResgate(ResgateRequestDTO request) {

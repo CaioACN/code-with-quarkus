@@ -8,7 +8,6 @@ import { PontosService } from '../../services/pontos.service';
 import { NotificationService } from '../../services/notification.service';
 import { RecompensaRequestDTO, RecompensaResponseDTO, TipoRecompensa, ResgateRequestDTO } from '../../models/recompensa.model';
 import { SaldoUsuarioDTO } from '../../models/pontos.model';
-import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-recompensas',
@@ -32,7 +31,7 @@ import { finalize } from 'rxjs/operators';
 export class RecompensasComponent implements OnInit, OnDestroy {
   recompensas: RecompensaResponseDTO[] = [];
   saldoUsuario: SaldoUsuarioDTO | null = null;
-  usuarioId: number = 4; // Em uma aplicação real, viria da autenticação
+  usuarioId: number = 1; // Em uma aplicação real, viria da autenticação
   cartaoId: number | null = null;
 
   novaRecompensa: RecompensaRequestDTO = {

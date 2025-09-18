@@ -110,21 +110,33 @@ export class CampanhaBonusService {
     if (!campanha.vigenciaIni) {
       erros.push('Data de início é obrigatória');
     } else {
-      const dataIni = new Date(campanha.vigenciaIni);
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
-      
-      if (dataIni < hoje) {
-        erros.push('Data de início deve ser hoje ou no futuro');
+      // Validar formato da data (deve estar em formato ISO: YYYY-MM-DD)
+      const regexDataISO = /^\d{4}-\d{2}-\d{2}$/;
+      if (!regexDataISO.test(campanha.vigenciaIni)) {
+        erros.push('Formato de data de início inválido');
+      } else {
+        // Usar comparação de strings de data para evitar problemas de timezone
+        const dataIniStr = campanha.vigenciaIni.split('T')[0]; // Pegar apenas a parte da data
+        const hojeStr = new Date().toISOString().split('T')[0];
+        
+        if (dataIniStr < hojeStr) {
+          erros.push('Data de início deve ser hoje ou no futuro');
+        }
       }
     }
 
     if (campanha.vigenciaFim) {
-      const dataIni = new Date(campanha.vigenciaIni);
-      const dataFim = new Date(campanha.vigenciaFim);
-      
-      if (dataFim <= dataIni) {
-        erros.push('Data de fim deve ser posterior à data de início');
+      // Validar formato da data de fim
+      const regexDataISO = /^\d{4}-\d{2}-\d{2}$/;
+      if (!regexDataISO.test(campanha.vigenciaFim)) {
+        erros.push('Formato de data de fim inválido');
+      } else {
+        const dataIni = new Date(campanha.vigenciaIni);
+        const dataFim = new Date(campanha.vigenciaFim);
+        
+        if (dataFim <= dataIni) {
+          erros.push('Data de fim deve ser posterior à data de início');
+        }
       }
     }
 

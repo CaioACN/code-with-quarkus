@@ -249,9 +249,12 @@
           <label for="vigenciaIni">Data de Início *</label>
           <input 
             id="vigenciaIni" 
-            type="date" 
+            type="text" 
             [(ngModel)]="formulario.vigenciaIni" 
             name="vigenciaIni"
+            placeholder="DD-MM-YYYY"
+            maxlength="10"
+            (input)="formatarDataInput($event, 'vigenciaIni')"
             required>
         </div>
 
@@ -259,9 +262,12 @@
           <label for="vigenciaFim">Data de Fim</label>
           <input 
             id="vigenciaFim" 
-            type="date" 
+            type="text" 
             [(ngModel)]="formulario.vigenciaFim" 
-            name="vigenciaFim">
+            name="vigenciaFim"
+            placeholder="DD-MM-YYYY"
+            maxlength="10"
+            (input)="formatarDataInput($event, 'vigenciaFim')">
         </div>
       </div>
 

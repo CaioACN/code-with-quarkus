@@ -76,8 +76,7 @@ public class ResgateResource {
     @Path("/{id}/aprovar")
     public Response aprovarResgate(@PathParam("id") Long id) {
         try {
-            // Implementar serviço de aprovação
-            ResgateResponseDTO resgate = new ResgateResponseDTO();
+            ResgateResponseDTO resgate = resgateService.aprovarResgate(id, null);
             
             return Response.ok(SuccessResponseDTO.ok("Resgate aprovado com sucesso", resgate)).build();
         } catch (Exception e) {
@@ -91,8 +90,7 @@ public class ResgateResource {
     @Path("/{id}/concluir")
     public Response concluirResgate(@PathParam("id") Long id) {
         try {
-            // Implementar serviço de conclusão
-            ResgateResponseDTO resgate = new ResgateResponseDTO();
+            ResgateResponseDTO resgate = resgateService.concluirResgate(id, null);
             
             return Response.ok(SuccessResponseDTO.ok("Resgate concluído com sucesso", resgate)).build();
         } catch (Exception e) {
@@ -108,8 +106,7 @@ public class ResgateResource {
             @PathParam("id") Long id,
             @QueryParam("motivo") String motivo) {
         try {
-            // Implementar serviço de negação
-            ResgateResponseDTO resgate = new ResgateResponseDTO();
+            ResgateResponseDTO resgate = resgateService.negarResgate(id, motivo);
             
             return Response.ok(SuccessResponseDTO.ok("Resgate negado com sucesso", resgate)).build();
         } catch (Exception e) {

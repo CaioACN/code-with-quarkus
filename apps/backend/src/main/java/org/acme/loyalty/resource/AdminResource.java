@@ -115,8 +115,10 @@ public class AdminResource {
             LOG.info("Realizando ajuste de pontos - usuário: " + ajusteRequest.usuarioId + 
                     ", cartão: " + ajusteRequest.cartaoId + ", pontos: " + ajusteRequest.pontos);
             
-            // Implementar método realizarAjustePontos no AdminService
-            // MovimentoPontosDTO movimento = adminService.realizarAjustePontos(ajusteRequest);
+            // Chama o método ajustarPontos do AdminService
+            adminService.ajustarPontos(ajusteRequest);
+            
+            // Retorna um DTO vazio pois o método ajustarPontos é void
             MovimentoPontosDTO movimento = new MovimentoPontosDTO();
             
             LOG.info("Ajuste de pontos realizado com sucesso - ID: " + movimento.id);

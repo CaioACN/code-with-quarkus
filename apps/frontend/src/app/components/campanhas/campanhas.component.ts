@@ -119,25 +119,34 @@ export class CampanhasComponent implements OnInit {
   }
 
   editarCampanha(campanha: CampanhaBonusResponse): void {
-    this.modoEdicao = true;
     this.campanhaSelecionada = campanha;
     this.formulario = {
       nome: campanha.nome,
       descricao: campanha.descricao || '',
       multiplicadorExtra: campanha.multiplicadorExtra,
-      vigenciaIni: campanha.vigenciaIni,
-      vigenciaFim: campanha.vigenciaFim || '',
+      vigenciaIni: this.converterDataDeISO(campanha.vigenciaIni),
+      vigenciaFim: campanha.vigenciaFim ? this.converterDataDeISO(campanha.vigenciaFim) : '',
       segmento: campanha.segmento || '',
       prioridade: campanha.prioridade,
       teto: campanha.teto
     };
+    this.modoEdicao = true;
     this.erro = null;
     this.sucesso = null;
   }
 
   salvarCampanha(): void {
+    // Converter datas para formato ISO antes da validação
+    const formularioParaValidacao = { ...this.formulario };
+    if (formularioParaValidacao.vigenciaIni) {
+      formularioParaValidacao.vigenciaIni = this.converterDataParaISO(formularioParaValidacao.vigenciaIni);
+    }
+    if (formularioParaValidacao.vigenciaFim) {
+      formularioParaValidacao.vigenciaFim = this.converterDataParaISO(formularioParaValidacao.vigenciaFim);
+    }
+    
     // Validar formulário
-    const erros = this.campanhaService.validarCampanha(this.formulario);
+    const erros = this.campanhaService.validarCampanha(formularioParaValidacao);
     if (erros.length > 0) {
       this.erro = erros.join(', ');
       return;
@@ -147,8 +156,8 @@ export class CampanhasComponent implements OnInit {
     this.erro = null;
 
     const operacao = this.campanhaSelecionada ? 
-      this.campanhaService.atualizarCampanha(this.campanhaSelecionada.id, this.formulario) :
-      this.campanhaService.criarCampanha(this.formulario);
+      this.campanhaService.atualizarCampanha(this.campanhaSelecionada.id, formularioParaValidacao) :
+      this.campanhaService.criarCampanha(formularioParaValidacao);
 
     operacao.subscribe({
       next: (response) => {
@@ -251,7 +260,62 @@ export class CampanhasComponent implements OnInit {
   }
 
   formatarData(data: string): string {
-    return new Date(data).toLocaleDateString('pt-BR');
+    if (!data) return '';
+    // Se a data já está no formato DD-MM-YYYY, retorna como está
+    if (data.includes('-') && data.split('-').length === 3 && data.split('-')[0].length === 2) {
+      return data;
+    }
+    // Se está no formato ISO, converte para DD-MM-YYYY
+    const date = new Date(data);
+    const dia = date.getDate().toString().padStart(2, '0');
+    const mes = (date.getMonth() + 1).toString().padStart(2, '0');
+    const ano = date.getFullYear();
+    return `${dia}-${mes}-${ano}`;
+  }
+
+  obterDataHoje(): string {
+    const hoje = new Date();
+    const dia = hoje.getDate().toString().padStart(2, '0');
+    const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
+    const ano = hoje.getFullYear();
+    return `${dia}-${mes}-${ano}`;
+  }
+
+  formatarDataInput(event: any, campo: string): void {
+    let valor = event.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    
+    if (valor.length >= 2) {
+      valor = valor.substring(0, 2) + '-' + valor.substring(2);
+    }
+    if (valor.length >= 5) {
+      valor = valor.substring(0, 5) + '-' + valor.substring(5, 9);
+    }
+    
+    event.target.value = valor;
+    
+    // Atualiza o modelo
+    if (campo === 'vigenciaIni') {
+      this.formulario.vigenciaIni = valor;
+    } else if (campo === 'vigenciaFim') {
+      this.formulario.vigenciaFim = valor;
+    }
+  }
+
+  converterDataParaISO(dataDDMMYYYY: string): string {
+    if (!dataDDMMYYYY || dataDDMMYYYY.length !== 10) return '';
+    const partes = dataDDMMYYYY.split('-');
+    if (partes.length !== 3) return '';
+    const [dia, mes, ano] = partes;
+    return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  }
+
+  converterDataDeISO(dataISO: string): string {
+    if (!dataISO) return '';
+    const date = new Date(dataISO);
+    const dia = date.getDate().toString().padStart(2, '0');
+    const mes = (date.getMonth() + 1).toString().padStart(2, '0');
+    const ano = date.getFullYear();
+    return `${dia}-${mes}-${ano}`;
   }
 
   obterStatusVigencia(campanha: CampanhaBonusResponse): {

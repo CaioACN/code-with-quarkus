@@ -99,20 +99,45 @@ Movimento de Expiração → Atualização de Saldo → Notificação
 #### Manualmente
 ```bash
 # Subir todos os serviços
-docker-compose up --build -d
+docker-compose up --build
 
-# Verificar logs
+# Verificar status dos containers
+docker ps
+
+# Verificar logs em tempo real
 docker-compose logs -f
+
+# Verificar logs específicos
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f postgres
 
 # Parar os serviços
 docker-compose down
 ```
 
+#### ✅ Verificação do Sistema
+```bash
+# Testar backend (Health Check)
+curl http://localhost:8080/health
+# ou no PowerShell:
+Invoke-WebRequest -Uri http://localhost:8080/health -Method GET
+
+# Testar frontend
+curl http://localhost:80
+# ou no PowerShell:
+Invoke-WebRequest -Uri http://localhost:80 -Method GET
+
+# Verificar banco de dados
+docker exec -it postgres psql -U postgres -d quarkus-social -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'loyalty';"
+```
+
 **Portas (Docker)**:
-- **Frontend**: http://localhost (porta 80)
+- **Frontend**: http://localhost:80
 - **Backend**: http://localhost:8080
 - **PostgreSQL**: localhost:5432
 - **Swagger UI**: http://localhost:8080/q/swagger-ui
+- **Health Check**: http://localhost:8080/health
 
 ### Portas dos Serviços
 
@@ -275,26 +300,47 @@ export const API_CONFIG = {
 
 ### Endpoints Principais
 
+**Health Check e Status**
+- `GET /health` - Status da aplicação
+- `GET /q/health` - Health check detalhado do Quarkus
+- `GET /q/metrics` - Métricas da aplicação
+
 **Usuários e Cartões**
 - `GET /usuarios` - Listar usuários
 - `POST /usuarios` - Criar usuário
+- `GET /usuarios/{id}` - Buscar usuário por ID
+- `PUT /usuarios/{id}` - Atualizar usuário
 - `GET /cartoes` - Listar cartões
 - `POST /cartoes` - Criar cartão
+- `GET /cartoes/{id}` - Buscar cartão por ID
 
 **Transações e Pontos**
 - `POST /transacoes` - Registrar transação
-- `GET /pontos/saldo/{cartaoId}` - Consultar saldo
-- `GET /pontos/extrato/{cartaoId}` - Extrato de pontos
+- `GET /transacoes` - Listar transações
+- `GET /pontos/saldo/{cartaoId}` - Consultar saldo de pontos
+- `GET /pontos/extrato/{cartaoId}` - Extrato detalhado de pontos
+- `GET /movimentos-pontos` - Listar movimentações de pontos
 
 **Recompensas e Resgates**
-- `GET /recompensas` - Catálogo de recompensas
-- `POST /resgates` - Solicitar resgate
-- `GET /resgates` - Listar resgates
+- `GET /recompensas` - Catálogo de recompensas disponíveis
+- `POST /recompensas` - Criar nova recompensa
+- `PUT /recompensas/{id}` - Atualizar recompensa
+- `POST /resgates` - Solicitar resgate de pontos
+- `GET /resgates` - Listar resgates do usuário
+- `GET /resgates/{id}` - Detalhes do resgate
 
 **Administração**
-- `GET /admin/dashboard` - Painel administrativo (endpoint mantido para compatibilidade)
+- `GET /admin/dashboard` - Painel administrativo com métricas
+- `GET /admin/resgates` - Listar todos os resgates (admin)
 - `PUT /admin/resgates/{id}/aprovar` - Aprovar resgate
 - `PUT /admin/resgates/{id}/concluir` - Concluir resgate
+- `PUT /admin/resgates/{id}/cancelar` - Cancelar resgate
+
+**Campanhas e Notificações**
+- `GET /campanhas` - Listar campanhas ativas
+- `POST /campanhas` - Criar campanha de bônus
+- `GET /notificacoes` - Listar notificações do usuário
+- `POST /notificacoes` - Enviar notificação
 
 **Documentação Completa**: 
 - Desenvolvimento: http://localhost:8081/q/swagger-ui
@@ -377,9 +423,9 @@ docker-compose logs -f postgres
 
 ## 🗃️ Banco de Dados PostgreSQL
 
-### Configuração
+### Configuração Atual
 
-**Database**: `quarkus-social` (Docker) / `postgres` (Desenvolvimento)
+**Database**: `quarkus-social` (Todos os ambientes)
 **Schema**: `loyalty`
 **Usuário**: `postgres`
 **Senha**: `postgres`
@@ -393,6 +439,7 @@ docker-compose logs -f postgres
 Host: postgres (interno) / localhost:5432 (externo)
 Database: quarkus-social
 Schema: loyalty
+URL: jdbc:postgresql://postgres:5432/quarkus-social
 ```
 
 **Desenvolvimento Local**:
@@ -402,17 +449,20 @@ docker-compose up -d postgres
 
 # Conexão local
 Host: localhost:5432
-Database: postgres
+Database: quarkus-social
 Schema: loyalty
+URL: jdbc:postgresql://localhost:5432/quarkus-social
 ```
 
-**Testes**:
-```bash
-# Configuração separada para testes
-Host: localhost:6543
-Database: quarkus-social
-Schema: public
+### ⚠️ Configuração Importante
+
+O sistema foi corrigido para usar o banco `quarkus-social` em todos os ambientes. A configuração no arquivo `application-docker.properties` foi atualizada:
+
+```properties
+quarkus.datasource.jdbc.url=jdbc:postgresql://postgres:5432/quarkus-social
 ```
+
+**Documentação Completa**: Consulte o arquivo [DATABASE.md](DATABASE.md) para informações detalhadas sobre estrutura, migrações e comandos úteis.
 
 ### Versionamento e Migrações
 

@@ -18,7 +18,7 @@ import { SaldoUsuarioDTO } from '../../models/pontos.model';
 export class ResgatesComponent implements OnInit, OnDestroy {
   resgates: ResgateResponseDTO[] = [];
   saldoUsuario: SaldoUsuarioDTO | null = null;
-  usuarioId: number = 4; // Em uma aplicação real, viria da autenticação
+  usuarioId: number = 1; // Em uma aplicação real, viria da autenticação
   
   resgateSelecionado: ResgateResponseDTO | null = null;
   cartaoId: number | null = null;
